@@ -744,7 +744,7 @@ void reduce_gradient(double *voxels, int n_voxels, int n_gradients, int n_plans)
     }
 }
 
-void apply_adam(double *gradient, double *momentum, double *variance, int n_beamlets, float step, double *fluence, int n_plans) {
+void apply_adam(double *gradient, double *momentum, double *variance, int n_beamlets, float step, double *fluence, int n_plans, int t, double beta1, double beta2, double epsilon) {
 
     double beta1 = 0.9;
     double beta2 = 0.999;
@@ -758,8 +758,8 @@ void apply_adam(double *gradient, double *momentum, double *variance, int n_beam
         variance[i] = beta2 *variance[i] + (1-beta2)*gradient[i]*gradient[i];
 
         // Corregir sesgo
-        double m_hat = momentum[i]/(1 - pow(beta1, 1));
-        double v_hat = variance[i]/(1 - pow(beta2, 1));
+        double m_hat = momentum[i]/(1 - pow(beta1, t));
+        double v_hat = variance[i]/(1 - pow(beta2, t));
 
         fluence[i] += step* m_hat/(sqrt(v_hat) + epsilon);
 
@@ -772,7 +772,7 @@ void apply_adam(double *gradient, double *momentum, double *variance, int n_beam
     }
 }
 
-int descend(Plan plan, double *voxels, double *gradient, double *momentum, double *variance, float step) {
+int descend(Plan plan, double *voxels, double *gradient, double *momentum, double *variance, float step, int t, double beta1, double beta2, double epsilon) {
     memset(voxels, 0, plan.n_plans*plan.n_voxels*sizeof(*voxels));
     memset(gradient, 0, plan.n_plans*plan.n_beamlets*sizeof(*gradient));
 
@@ -805,7 +805,7 @@ int descend(Plan plan, double *voxels, double *gradient, double *momentum, doubl
     double elapsed = get_time_s() - start_time;
     //printf("Descend mm: %.4f seconds.\n", elapsed);
     
-    apply_adam(gradient, momentum, variance, plan.n_beamlets, step, plan.fluence, plan.n_plans);
+    apply_adam(gradient, momentum, variance, plan.n_beamlets, step, plan.fluence, plan.n_plans, t, beta1, beta2, epsilon);
 
     return n_gradients;
 }
@@ -814,6 +814,9 @@ void optimize(Plan plan) {
 
     int gradients_per_region = 3; // Warning, hardcoded!
     // *2 because we need two for PTVs, but we're wasting space on organs.
+
+    double beta1 = 0.9, beta2 = 0.999, epsilon = 1e-8;
+
     double *voxels = (double *) malloc(plan.n_plans*plan.n_voxels*plan.n_regions*2*sizeof(*voxels)); 
     double *gradient = (double *) malloc(plan.n_plans*plan.n_beamlets*sizeof(*gradient));
     double *momentum = (double *) malloc(plan.n_plans*gradients_per_region*plan.n_regions*plan.n_beamlets*sizeof(*momentum));
@@ -838,7 +841,8 @@ void optimize(Plan plan) {
 
     int it = 0;
     while (running && get_time_s() - start_time < 600000) {
-        descend(plan, voxels, gradient, momentum, variance,step);
+        int t = it + 1;
+        descend(plan, voxels, gradient, momentum, variance, step, t, beta1, beta2, epsilon);
         plan.smooth_cpu();
         plan.compute_dose();
         plan.stats();
