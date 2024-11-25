@@ -772,7 +772,7 @@ void apply_adam(double *gradient, double *momentum, double *variance, int n_beam
     }
 }
 
-int descend(Plan plan, double *voxels, double *gradient, double *momentum, double *variance, float step, int t, double beta1, double beta2, double epsilon) {
+int descend(Plan plan, double *voxels, double *gradient, double *momentum, double *variance, float lr, int t, double beta1, double beta2, double epsilon) {
     memset(voxels, 0, plan.n_plans*plan.n_voxels*sizeof(*voxels));
     memset(gradient, 0, plan.n_plans*plan.n_beamlets*sizeof(*gradient));
 
@@ -805,7 +805,7 @@ int descend(Plan plan, double *voxels, double *gradient, double *momentum, doubl
     double elapsed = get_time_s() - start_time;
     //printf("Descend mm: %.4f seconds.\n", elapsed);
     
-    apply_adam(gradient, momentum, variance, plan.n_beamlets, step, plan.fluence, plan.n_plans, t, beta1, beta2, epsilon);
+    apply_adam(gradient, momentum, variance, plan.n_beamlets, lr, plan.fluence, plan.n_plans, t, beta1, beta2, epsilon);
 
     return n_gradients;
 }
@@ -833,16 +833,16 @@ void optimize(Plan plan) {
     int rid_sll = 3;
     int rid_slr = 4;
 
-    double step = 2e-7;
+    double lr = 2e-7;
     double decay = 1e-7;
-    double min_step = 1e-1;
+    double min_lr = 1e-1;
     double start_time = get_time_s();
     double current_time;
 
     int it = 0;
     while (running && get_time_s() - start_time < 600000) {
         int t = it + 1;
-        descend(plan, voxels, gradient, momentum, variance, step, t, beta1, beta2, epsilon);
+        descend(plan, voxels, gradient, momentum, variance, lr, t, beta1, beta2, epsilon);
         plan.smooth_cpu();
         plan.compute_dose();
         plan.stats();
@@ -851,7 +851,7 @@ void optimize(Plan plan) {
         if (it % 100 == 0) {
             current_time = get_time_s();
 
-            printf("\n[%.3f] Iteration %d %e\n", current_time - start_time, it, step);
+            printf("\n[%.3f] Iteration %d %e\n", current_time - start_time, it, lr);
 
             for (int k = 0; k < plan.n_plans; k++) {
                 unsigned int poff = k*plan.n_regions;
@@ -865,8 +865,8 @@ void optimize(Plan plan) {
                 plan.print_table(k);
             }
         }
-        if (step > min_step) 
-            step = step/(1 + decay*it);
+        if (lr > min_lr) 
+            lr = lr/(1 + decay*it);
         it++;
         if (it == 2000)
             break;
