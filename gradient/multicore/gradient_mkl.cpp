@@ -336,6 +336,7 @@ struct Plan {
                 spm.rows[idx] = row;
                 spm.cols[idx] = new_col;
                 spm.vals[idx] = val;
+                //printf("%d %d %lf\n", row, new_col, val);
                 idx++;
                 n_read++;
 
@@ -570,7 +571,7 @@ struct Plan {
         printf("%2d    Region               Min       Avg       Max       EUD     v_EUD\n", pid); 
         for (int i = 0; i < n_regions; i++) {
             Region r = regions[pid*n_regions + i];
-            if (r.is_optimized) {
+            if (true || r.is_optimized) { // Vamos a imprimir todas para probar TROTS
                 printf("%-20s %9.4lf %9.4lf %9.4lf %9.4lf %9.4lf\n", r.name, r.min, r.avg, r.max, r.eud, r.v_eud);
             }
         }
@@ -585,10 +586,10 @@ struct Plan {
         smoothed_fluence = (double *) malloc(n_plans*n_beamlets*sizeof(double));
         doses = (double *) malloc(n_plans*n_voxels*sizeof(double));
 
-        load_coords(plan_path);
+        //load_coords(plan_path);
 
         //load_fluence(fluence_path, fluence_prefix);
-        init_fluence(1e-3);
+        init_fluence(10);
         print();
     }
 
@@ -748,17 +749,23 @@ void apply_gradient(double *gradient, double *momentum, int n_beamlets, float st
 
     int beta = 0.9;
 
-    #pragma omp parallel for
+    //#pragma omp parallel for
     for (int i = 0; i < n_plans*n_beamlets; i++) {
+        if (isnan(gradient[i])) {
+            printf("%d %f %f %f %f\n", i, fluence[i], gradient[i], momentum[i], fluence[i] + step*momentum[i]);
+            exit(EXIT_FAILURE);
+        }
+
         momentum[i] = beta*momentum[i] + (1-beta)*gradient[i];
         fluence[i] += step*momentum[i];
 
         if (fluence[i] < 0) {
             fluence[i] = 0;
         }
-        if (fluence[i] > 0.3) {
-            fluence[i] = 0.3;
-        }
+        // There's no max fluence on TROTS??
+        //if (fluence[i] > 0.3) {
+        //    fluence[i] = 0.3;
+        //}
     }
 }
 
@@ -809,17 +816,24 @@ void optimize(Plan plan) {
     double *momentum = (double *) malloc(plan.n_plans*gradients_per_region*plan.n_regions*plan.n_beamlets*sizeof(*momentum));
     memset(momentum, 0, plan.n_plans*gradients_per_region*plan.n_regions*plan.n_beamlets*sizeof(*momentum));
 
-    plan.compute_dose();
-    plan.stats();
-    //printf("Initial solution:\n");
-    //for (int k = 0; k < plan.n_plans; k++) {
-    //    plan.print_table(k);
-    //}
-
     int rid_sll = 3;
     int rid_slr = 4;
 
-    double step = 2e-7;
+    plan.compute_dose();
+    plan.stats();
+    printf("Initial solution:\n");
+    for (int k = 0; k < plan.n_plans; k++) {
+        unsigned int poff = k*plan.n_regions;
+        double pen = penalty(plan, k);
+        double obj = plan.regions[poff + rid_sll].avg + plan.regions[poff + rid_slr].avg;
+        double obj2 = objective(plan, k);
+        printf("%2d penalty: %9.6f\n", k, pen);
+        printf("%2d    obj: %9.6f\n", k, obj); 
+        printf("%2d   obj2: %9.24f\n", k, obj2);
+        plan.print_table(k);
+    }
+
+    double step = 1e3;
     double decay = 1e-7;
     double min_step = 1e-1;
     double start_time = get_time_s();
@@ -828,7 +842,7 @@ void optimize(Plan plan) {
     int it = 0;
     while (running && get_time_s() - start_time < 600000) {
         descend(plan, voxels, gradient, momentum, step);
-        plan.smooth_cpu();
+        //plan.smooth_cpu();
         plan.compute_dose();
         plan.stats();
         //break;
@@ -850,11 +864,11 @@ void optimize(Plan plan) {
                 plan.print_table(k);
             }
         }
-        if (step > min_step) 
-            step = step/(1 + decay*it);
+        //if (step > min_step) 
+        //    step = step/(1 + decay*it);
         it++;
-        if (it == 2000)
-            break;
+        //if (it == 2000)
+        //    break;
     }
 
     double elapsed = get_time_s() - start_time;
@@ -867,8 +881,8 @@ void optimize(Plan plan) {
         double obj2 = objective(plan, k);
         printf("%2d penalty: %9.6f\n", k, pen);
         printf("%2d    obj: %9.6f\n", k, obj); 
-        //printf("%2d   obj2: %9.24f\n", k, obj2);
-        //plan.print_table(k);
+        printf("%2d   obj2: %9.24f\n", k, obj2);
+        plan.print_table(k);
     }
 
     free(voxels);
@@ -880,106 +894,50 @@ int main(int argc, char **argv) {
 
     signal(SIGINT, interrupt_handler);
 
-    int plan_n = atoi(argv[1]);
-    const char* plan_path = argv[2];
-    const char* out_path = argv[3];
+    const char* plan_path = argv[1];
+    const char* out_path = argv[2];
     const char* fluence_path;
     const char* fluence_prefix;
 
     if (argc > 4) {
-        fluence_path = argv[4];
-        fluence_prefix = argv[5];
-    } else {
-        // We use the starting plan from Eclipse
-        fluence_path = plan_path;
-        fluence_prefix = "x_PARETO";
+        fluence_path = argv[3];
+        fluence_prefix = argv[4];
     }
-    int n_plans = atoi(argv[6]);
+
+    int n_plans = 1; // Hardcoded to 1 plan for TROTS
 
     Plan plan = {};
     plan.n_plans = n_plans;
     plan.load(plan_path, fluence_path, fluence_prefix);
 
-    if (plan_n == 3) {
-        for (int k = 0; k < plan.n_plans; k++) {
-            plan.regions[k*plan.n_regions +  0].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
-            plan.regions[k*plan.n_regions +  1].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
-            plan.regions[k*plan.n_regions +  2].set_targets(false,    -1,    -1,    -1,    60,    60,  10,   5);
-            plan.regions[k*plan.n_regions +  3].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
-            plan.regions[k*plan.n_regions +  4].set_targets(false,    -1,    -1,    -1,    50,    50,  10,   5);
-            plan.regions[k*plan.n_regions +  5].set_targets(false,    -1,    -1,    26,    -1,    26,   1,   5);
-            plan.regions[k*plan.n_regions +  6].set_targets(false,    -1,    -1,    26,    -1,    26,   1,   5);
-            plan.regions[k*plan.n_regions +  7].set_targets(false,    -1,    -1,    -1,    70,    70,  10,   5);
-            plan.regions[k*plan.n_regions +  8].set_targets(false,    -1,    -1,    -1, 74.25, 74.25,  40,   5);
-            plan.regions[k*plan.n_regions +  9].set_targets( true, 60.75, 66.15, 68.85, 74.25, 67.50, -40,  50);
-            plan.regions[k*plan.n_regions + 10].set_targets( true, 54.00, 58.80, 61.20, 66.00, 60.00, -50, 100);
-            plan.regions[k*plan.n_regions + 11].set_targets( true, 48.60, 52.92, 55.08, 59.40, 54.00, -40, 100);
-        }
-    } else if (plan_n == 4) {
-        for (int k = 0; k < plan.n_plans; k++) {
-            plan.regions[k*plan.n_regions +  0].set_targets(false,    -1,    -1,    -1,    70,    70,  10,   5);
-            plan.regions[k*plan.n_regions +  1].set_targets(false,    -1,    -1,    26,    -1,    26,   1,   5);
-            plan.regions[k*plan.n_regions +  2].set_targets(false,    -1,    -1,    26,    -1,    26,   1,   5);
-            plan.regions[k*plan.n_regions +  3].set_targets(false,    -1,    -1,    -1,    50,    50,  10,   5);
-            plan.regions[k*plan.n_regions +  4].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
-            plan.regions[k*plan.n_regions +  5].set_targets( true, 59.40, 64.67, 67.32, 72.60, 66.00, -50,  50);
-            plan.regions[k*plan.n_regions +  6].set_targets( true, 53.46, 58.21, 60.59, 65.34, 59.40, -50,  50);
-            plan.regions[k*plan.n_regions +  7].set_targets(false,    -1,    -1,    -1,    60,    60,  10,   5);
-            plan.regions[k*plan.n_regions +  8].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
-            plan.regions[k*plan.n_regions +  9].set_targets(false,    -1,    -1,    -1, 74.25, 74.25,  10,   5);
-            plan.regions[k*plan.n_regions + 10].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
-        }
-    } else if (plan_n == 5) {
-        for (int k = 0; k < plan.n_plans; k++) {
-            if (k % 3 == 0) {
-                plan.regions[k*plan.n_regions +  0].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
-                plan.regions[k*plan.n_regions +  1].set_targets(false,    -1,    -1,    -1, 74.25, 74.25,  40,   5);
-                plan.regions[k*plan.n_regions +  2].set_targets(false,    -1,    -1,    -1,    70,    70,  10,   5);
-                plan.regions[k*plan.n_regions +  3].set_targets(false,    -1,    -1,    26,    -1,  4.76, 1.01, 18.25);
-                plan.regions[k*plan.n_regions +  4].set_targets(false,    -1,    -1,    26,    -1,  3.79, 1.31, 11.17);
-                plan.regions[k*plan.n_regions +  5].set_targets(false,    -1,    -1,    -1,    50,  1.80, 1.33, 12.79);
-                plan.regions[k*plan.n_regions +  6].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
-                plan.regions[k*plan.n_regions +  7].set_targets(false,    -1,    -1,    -1,    60,    60,  10,   5);
-                plan.regions[k*plan.n_regions +  8].set_targets( true, 48.60, 52.92, 55.08, 59.40, 54.00, -65.55, 54.11);
-                plan.regions[k*plan.n_regions +  9].set_targets( true, 54.00, 58.80, 61.20, 66.00, 60.00, -87.12, 57.66);
-                plan.regions[k*plan.n_regions + 10].set_targets( true, 59.40, 64.67, 67.32, 72.60, 66.00, -33.27, 18.62);
-                plan.regions[k*plan.n_regions + 11].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
-            } else if (k % 3 == 1){
-                plan.regions[k*plan.n_regions +  0].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
-                plan.regions[k*plan.n_regions +  1].set_targets(false,    -1,    -1,    -1, 74.25, 74.25,  10,  5);
-                plan.regions[k*plan.n_regions +  2].set_targets(false,    -1,    -1,    -1,    70,    70,  10,   5);
-                plan.regions[k*plan.n_regions +  3].set_targets(false,    -1,    -1,    26,    -1,    26,   1,   5);
-                plan.regions[k*plan.n_regions +  4].set_targets(false,    -1,    -1,    26,    -1,    26,   1,   5);
-                plan.regions[k*plan.n_regions +  5].set_targets(false,    -1,    -1,    -1,    50,    50,  10,   5);
-                plan.regions[k*plan.n_regions +  6].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
-                plan.regions[k*plan.n_regions +  7].set_targets(false,    -1,    -1,    -1,    60,    60,  10,   5);
-                plan.regions[k*plan.n_regions +  8].set_targets( true, 48.60, 52.92, 55.08, 59.40, 54.00, -50,   50);
-                plan.regions[k*plan.n_regions +  9].set_targets( true, 54.00, 58.80, 61.20, 66.00, 60.00, -50,   50);
-                plan.regions[k*plan.n_regions + 10].set_targets( true, 59.40, 64.67, 67.32, 72.60, 66.00, -50,   50);
-                plan.regions[k*plan.n_regions + 11].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
-            } else {
-                plan.regions[k*plan.n_regions +  0].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
-                plan.regions[k*plan.n_regions +  1].set_targets(false,    -1,    -1,    -1, 74.25, 74.25,  10,  5);
-                plan.regions[k*plan.n_regions +  2].set_targets(false,    -1,    -1,    -1,    70,    70,  10,   5);
-                plan.regions[k*plan.n_regions +  3].set_targets(false,    -1,    -1,    26,    -1,     1,   1,   5);
-                plan.regions[k*plan.n_regions +  4].set_targets(false,    -1,    -1,    26,    -1,     1,   1,   5);
-                plan.regions[k*plan.n_regions +  5].set_targets(false,    -1,    -1,    -1,    50,    50,  10,   5);
-                plan.regions[k*plan.n_regions +  6].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
-                plan.regions[k*plan.n_regions +  7].set_targets(false,    -1,    -1,    -1,    60,    60,  10,   5);
-                plan.regions[k*plan.n_regions +  8].set_targets( true, 48.60, 52.92, 55.08, 59.40, 54.00, -50,   50);
-                plan.regions[k*plan.n_regions +  9].set_targets( true, 54.00, 58.80, 61.20, 66.00, 60.00, -50,   50);
-                plan.regions[k*plan.n_regions + 10].set_targets( true, 59.40, 64.67, 67.32, 72.60, 66.00, -50,   50);
-                plan.regions[k*plan.n_regions + 11].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
-            }
-        }
-    }
-        
+    plan.regions[ 0].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // Patient
+    plan.regions[ 1].set_targets(false,    -1,    -1,    -1, 38.00, 38.00,  10,   5); // Spinal Cord
+    plan.regions[ 2].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // Parotid (R)
+    plan.regions[ 3].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // Parotid (L)
+    plan.regions[ 4].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // SMG (R)
+    plan.regions[ 5].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // SMG (L)
+    plan.regions[ 6].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // MCS
+    plan.regions[ 7].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // MCM
+    plan.regions[ 8].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // MCI
+    plan.regions[ 9].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // MCP
+    plan.regions[10].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // Oesophagus
+    plan.regions[11].set_targets(false,    -1,    -1,    -1, 38.00, 38.00,  10,   5); // Brainstem
+    plan.regions[12].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // Oral Cavity
+    plan.regions[13].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // Larynx
+    plan.regions[14].set_targets( true, 45.00, 46.00, 47.00, 48.00, 46.00, -50, 100); // PTV 0-46Gy
+    plan.regions[15].set_targets(false,    -1,    -1,    -1, 36.80, 36.80,  10,   5); // PTV Shell 15mm
+    plan.regions[16].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5); // PTV Shell 30mm
+    plan.regions[17].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5); // PTV Shell 40mm
+    plan.regions[18].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5); // PTV Shell 5mm
+    plan.regions[19].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5); // PTV Shell 0mm
+    plan.regions[20].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5); // Ext. Ring 20mm
+
     optimize(plan);
 
-    //FILE *f = fopen(out_path, "w");
-    //for (int i = 0; i < plan.n_beamlets; i++) {
-    //    fprintf(f, "%.10e\n", plan.fluence[i]);
-    //}
-    //fclose(f);
-    //printf("Last fluence written to %s\n", out_path);
+    FILE *f = fopen(out_path, "w");
+    for (int i = 0; i < plan.n_beamlets; i++) {
+        fprintf(f, "%.10e\n", plan.fluence[i]);
+    }
+    fclose(f);
+    printf("Last fluence written to %s\n", out_path);
 }
