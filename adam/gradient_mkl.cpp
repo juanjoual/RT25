@@ -744,7 +744,7 @@ void reduce_gradient(double *voxels, int n_voxels, int n_gradients, int n_plans)
     }
 }
 
-void apply_adam(double *gradient, double *momentum, double *variance, int n_beamlets, float step, double *fluence, int n_plans, int t, double beta1, double beta2, double epsilon) {
+void apply_adam(double *gradient, double *momentum, double *variance, int n_beamlets, float lr, double *fluence, int n_plans, int t, double beta1, double beta2, double epsilon) {
 
     double beta1 = 0.9;
     double beta2 = 0.999;
@@ -761,7 +761,7 @@ void apply_adam(double *gradient, double *momentum, double *variance, int n_beam
         double m_hat = momentum[i]/(1 - pow(beta1, t));
         double v_hat = variance[i]/(1 - pow(beta2, t));
 
-        fluence[i] += step* m_hat/(sqrt(v_hat) + epsilon);
+        fluence[i] += lr* m_hat/(sqrt(v_hat) + epsilon);
 
         if (fluence[i] < 0) {
             fluence[i] = 0;
