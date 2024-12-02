@@ -832,8 +832,8 @@ void optimize(Plan plan) {
         printf("%2d   obj2: %9.24f\n", k, obj2);
         plan.print_table(k);
     }
-
-    double step = 1e3;
+    
+    double step = 10;
     double decay = 1e-7;
     double min_step = 1e-1;
     double start_time = get_time_s();

@@ -768,9 +768,6 @@ void apply_adam(double *gradient, double *momentum, double *variance, int n_beam
         double v_hat = variance[i]/(1 - pow(beta2, t));
 
         // Aplicación de decaimineto y actualización de fluencia
-        // double weight_decay = 1e-3; 
-        // fluence[i] = (1 - step * weight_decay) * fluence[i] + step * m_hat / (sqrt(v_hat) + epsilon);
-        
         fluence[i] += step* m_hat/(sqrt(v_hat) + epsilon);
 
         if (fluence[i] < 0) {
@@ -851,7 +848,7 @@ void optimize(Plan plan) {
         plan.print_table(k);
     }
 
-    double step = 1e-3;
+    double step = 10;
     double decay = 1e-4;
     double min_step = 1e-1;
     double start_time = get_time_s();
