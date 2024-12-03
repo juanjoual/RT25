@@ -15,4 +15,5 @@ Contiene el archivo principal (adam_mlk.cpp), junto con el Makefile y el script 
 
 -run.sh: Tambien dentro está dividido en dos partes una para leer el adam_mkl (crea una carpeta donde guarda los resultados llamada results_adam) y la otra parte para leer el gradient_mkl (crea una carpeta donde guarda los resultados llamada results_gradient).
 
+## Observaciones
 **Obs:** Siempre se debe comentar tanto en el Makefile como en el run.sh la parte que no se irá a usar.
