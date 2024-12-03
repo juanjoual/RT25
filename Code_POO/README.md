@@ -1,4 +1,4 @@
-# Código de planificación de radioterapia con implementación del método de Adam.
+# Código de planificación de radioterapia con implementación del método de Adam y Gradiente por descenso .
 
 ## Carpeta Source
 Contiene los códigos fuente (.h y .cpp), incluyendo las clases:
