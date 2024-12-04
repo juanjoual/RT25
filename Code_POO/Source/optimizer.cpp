@@ -1,9 +1,6 @@
 #include "Optimizer.h"
 
 
-void interrupt_handler(int signal) {
-    running = 0;
-}
 
 void Optimizer::voxels_eud(Plan *plan, int rid, int pid, double *voxels) {
     Region *r = &plan->regions[pid*plan->n_regions + rid];
@@ -100,26 +97,26 @@ void Optimizer::reduce_gradient(double *voxels, int n_voxels, int n_gradients, i
     }
 }
 
-void Optimizer::adam(double *gradient, double *momentum, double *variance, int n_beamlets, float step, double *fluence, int n_plans, int t, double beta1, double beta2, double epsilon) {
+void Optimizer::adam(double *gradient, double *momentum, double *variance, int n_beamlets, float step, double *fluence, int n_plans, int t, float beta1, float beta2, float epsilon) {
       
     //#pragma omp parallel for
     for (int i = 0; i < n_plans*n_beamlets; i++) {
         if (isnan(gradient[i])) {
-            printf("%d %f %f %f %f %f\n", i, fluence[i], gradient[i], momentum[i], variance[i], fluence[i] + step*momentum[i]);
+            printf("i[%d], fluence[%d] = %f, gradient[%d] = %f, momentum[%d] = %f, variance[%d]= %f \n", i, i, fluence[i], i, gradient[i], i, momentum[i], i, variance[i]);
             exit(EXIT_FAILURE);
         }
 
         // Actualizar momento del primer orden (m_t)
-        momentum[i] = beta1*momentum[i] + (1-beta1)*gradient[i];
+        momentum[i] = beta1*momentum[i] + (1-beta1)*gradient[i]; 
         // Actualizar momento del segundo orden (v_t)
-        variance[i] = beta2 *variance[i] + (1-beta2)*gradient[i]*gradient[i];
-
+        variance[i] = beta2 *variance[i] + (1-beta2)*gradient[i]*gradient[i] + 1e-8;
+        
         // Corregir sesgo
         double m_hat = momentum[i]/(1 - pow(beta1, t));
         double v_hat = variance[i]/(1 - pow(beta2, t));
-
+     
         // Actualización de la fluencia
-        fluence[i] += step* m_hat/(sqrt(v_hat) + epsilon);
+        fluence[i] += step * m_hat/(sqrt(v_hat) + epsilon);
 
         if (fluence[i] < 0) {
             fluence[i] = 0;
@@ -131,7 +128,7 @@ void Optimizer::adam(double *gradient, double *momentum, double *variance, int n
     }
 }
 
-int Optimizer::descend(Plan *plan, double *voxels, double *gradient, double *momentum, double *variance, float step, int t, double beta1, double beta2, double epsilon) {
+int Optimizer::descend(Plan *plan, double *voxels, double *gradient, double *momentum, float step) {
 
     memset(voxels, 0, plan->n_plans*plan->n_voxels*sizeof(*voxels));
     memset(gradient, 0, plan->n_plans*plan->n_beamlets*sizeof(*gradient));
@@ -164,8 +161,6 @@ int Optimizer::descend(Plan *plan, double *voxels, double *gradient, double *mom
                     voxels, plan->n_plans, plan->n_voxels, beta, gradient, plan->n_beamlets);
     double elapsed = get_time_s() - start_time;
     //printf("Descend mm: %.4f seconds.\n", elapsed);
-    
-    adam(gradient, momentum, variance, plan->n_beamlets, step, plan->fluence, plan->n_plans, t, beta1, beta2, epsilon);
 
     return n_gradients;
 }
@@ -175,7 +170,7 @@ void Optimizer::optimize(Plan *plan) {
     int gradients_per_region = 3; // Warning, hardcoded!
     // *2 because we need two for PTVs, but we're wasting space on organs.
      
-    double beta1 = 0.9, beta2 = 0.999, epsilon = 1e-8;
+    beta1 = 0.9, beta2 = 0.999, epsilon = 1e-8;
  
     double *voxels = (double *) malloc(plan->n_plans*plan->n_voxels*plan->n_regions*2*sizeof(*voxels)); 
     double *gradient = (double *) malloc(plan->n_plans*plan->n_beamlets*sizeof(*gradient));
@@ -201,18 +196,18 @@ void Optimizer::optimize(Plan *plan) {
         plan->print_table(k);
     }
 
-    double step = 10;
-    double decay = 1e-4;
-    double min_step = 1e-1;
-    double start_time = get_time_s();
-    double current_time;
-    int warmup_steps = 100;
-
+    step = 10;
+    decay = 1e-4;
+    min_step = 1e-1;
+    start_time = get_time_s();
+    
     int it = 0;
     while (running && get_time_s() - start_time < 600000) {
-        int t = it + 1;
+        int t = it+1;
 
-        descend(plan, voxels, gradient, momentum, variance, step, t, beta1, beta2, epsilon);
+        descend(plan, voxels, gradient, momentum, step);
+        adam(gradient, momentum, variance, plan->n_beamlets, step, plan->fluence, plan->n_plans, t, beta1, beta2, epsilon);
+
         //plan.smooth_cpu();
         plan->compute_dose();
         plan->stats();
@@ -247,7 +242,7 @@ void Optimizer::optimize(Plan *plan) {
             }
         }
         // if (step > min_step) 
-        //    step = step/(1 + decay*it);
+        //    step = step/(1 + decay*t); // Decaimiento inverso
         it++;
         //if (it == 2000)
         //    break;
