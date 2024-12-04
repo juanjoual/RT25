@@ -109,7 +109,7 @@ void Optimizer::adam(double *gradient, double *momentum, double *variance, int n
         // Actualizar momento del primer orden (m_t)
         momentum[i] = beta1*momentum[i] + (1-beta1)*gradient[i]; 
         // Actualizar momento del segundo orden (v_t)
-        variance[i] = beta2 *variance[i] + (1-beta2)*gradient[i]*gradient[i] + 1e-8;
+        variance[i] = beta2 *variance[i] + (1-beta2)*gradient[i]*gradient[i] + epsilon;
         
         // Corregir sesgo
         double m_hat = momentum[i]/(1 - pow(beta1, t));
@@ -196,7 +196,7 @@ void Optimizer::optimize(Plan *plan) {
         plan->print_table(k);
     }
 
-    step = 10;
+    step = 1e1;
     decay = 1e-4;
     min_step = 1e-1;
     start_time = get_time_s();
