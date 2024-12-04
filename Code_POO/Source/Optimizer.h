@@ -4,10 +4,7 @@
 #include "Plan.h"
 #include "Region.h"
 
-
 static volatile int running = 1;
-
-void interrupt_handler(int signal);
 
 struct Optimizer {
     Plan plan;
@@ -18,10 +15,13 @@ struct Optimizer {
     double *fluence;
     float step;
     int t;
-    double beta1;
-    double beta2;
-    double epsilon;
-    double decay;
+    float beta1;
+    float beta2;
+    float epsilon;
+    float decay;
+    double min_step;
+    double start_time;
+    double current_time;
     double *objective_values;
 
     void voxels_eud(Plan *plan, int rid, int pid, double *voxels);
@@ -29,8 +29,8 @@ struct Optimizer {
     double objective(Plan *plan, unsigned int pid);
     void vector_stats(const char *name, double *vector, int n_values);
     void reduce_gradient(double *voxels, int n_voxels, int n_gradients, int n_plans);
-    void adam(double *gradient, double *momentum, double *variance, int n_beamlets, float step, double *fluence, int n_plans, int t, double beta1, double beta2, double epsilon);
-    int descend(Plan *plan, double *voxels, double *gradient, double *momentum, double *variance, float step, int t, double beta1, double beta2, double epsilon);
+    void adam(double *gradient, double *momentum, double *variance, int n_beamlets, float step, double *fluence, int n_plans, int t, float beta1, float beta2, float epsilon);
+    int descend(Plan *plan, double *voxels, double *gradient, double *momentum, float step);
     void optimize(Plan *plan);
 
 };

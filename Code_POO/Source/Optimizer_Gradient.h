@@ -4,22 +4,21 @@
 #include "Plan.h"
 #include "Region.h"
 
-
 static volatile int running = 1;
-
-void interrupt_handler(int signal);
 
 struct Optimizer {
     Plan plan;
     double *voxels;
     double *gradient;
     double *momentum;
-    double *variance;
     double *fluence;
     float step;
     double beta;
     double decay;
+    double min_step;
+    double start_time;
     double *objective_values;
+    double current_time;
 
     void voxels_eud(Plan *plan, int rid, int pid, double *voxels);
     double penalty(Plan *plan, unsigned int pid);

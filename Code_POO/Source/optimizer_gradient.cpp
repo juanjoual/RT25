@@ -1,10 +1,6 @@
 #include "Optimizer_Gradient.h"
 
 
-void interrupt_handler(int signal) {
-    running = 0;
-}
-
 void Optimizer::voxels_eud(Plan *plan, int rid, int pid, double *voxels) {
     Region *r = &plan->regions[pid*plan->n_regions + rid];
 
@@ -166,7 +162,7 @@ void Optimizer::optimize(Plan *plan) {
     int gradients_per_region = 3; // Warning, hardcoded!
     // *2 because we need two for PTVs, but we're wasting space on organs.
      
-    double beta = 0.9;
+    beta = 0.9;
  
     double *voxels = (double *) malloc(plan->n_plans*plan->n_voxels*plan->n_regions*2*sizeof(*voxels)); 
     double *gradient = (double *) malloc(plan->n_plans*plan->n_beamlets*sizeof(*gradient));
@@ -190,13 +186,11 @@ void Optimizer::optimize(Plan *plan) {
         plan->print_table(k);
     }
 
-    double step = 10;
-    double decay = 1e-4;
-    double min_step = 1e-1;
-    double start_time = get_time_s();
-    double current_time;
-    int warmup_steps = 100;
-
+    step = 10;
+    decay = 1e-4;
+    min_step = 1e-1;
+    start_time = get_time_s();
+   
     int it = 0;
     while (running && get_time_s() - start_time < 600000) {
 
