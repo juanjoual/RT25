@@ -6,10 +6,6 @@
 
 
 
-void interrupt_handler(int signal) {
-    running = 0;
-}
-
 int main(int argc, char **argv) {
 
     signal(SIGINT, interrupt_handler);
