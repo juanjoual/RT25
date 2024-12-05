@@ -1,5 +1,10 @@
 #include "Optimizer_Gradient.h"
 
+static volatile int running = 1;
+
+void interrupt_handler(int signal) {
+    running = 0;
+}
 
 void Optimizer::voxels_eud(Plan *plan, int rid, int pid, double *voxels) {
     Region *r = &plan->regions[pid*plan->n_regions + rid];
