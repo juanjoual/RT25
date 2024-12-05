@@ -6,6 +6,8 @@
 
 static volatile int running = 1;
 
+void interrupt_handler(int signal);
+
 struct Optimizer {
     Plan plan;
     double *voxels;

@@ -3,8 +3,11 @@
 
 #include "Plan.h"
 #include "Region.h"
+#include "SparseMatrix.h"
 
 static volatile int running = 1;
+
+void interrupt_handler(int signal);
 
 struct Optimizer {
     Plan plan;
@@ -23,7 +26,7 @@ struct Optimizer {
     double start_time;
     double current_time;
     double *objective_values;
-
+    
     void voxels_eud(Plan *plan, int rid, int pid, double *voxels);
     double penalty(Plan *plan, unsigned int pid);
     double objective(Plan *plan, unsigned int pid);
@@ -34,6 +37,8 @@ struct Optimizer {
     void optimize(Plan *plan);
 
 };
+
+
 
 
 
