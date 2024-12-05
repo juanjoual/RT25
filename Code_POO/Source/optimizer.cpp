@@ -97,7 +97,7 @@ void Optimizer::reduce_gradient(double *voxels, int n_voxels, int n_gradients, i
     }
 }
 
-void Optimizer::adam(double *gradient, double *momentum, double *variance, int n_beamlets, float step, double *fluence, int n_plans, int t, float beta1, float beta2, float epsilon) {
+void Optimizer::adam(double *gradient, double *momentum, double *variance, int n_beamlets, float step, double *fluence, int n_plans, int t, double beta1, double beta2, double epsilon) {
       
     //#pragma omp parallel for
     for (int i = 0; i < n_plans*n_beamlets; i++) {
