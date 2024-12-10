@@ -550,7 +550,7 @@ struct Plan {
                     int n = r->penalty;
                     int pd = r->pr_eud;
                     double eud = r->eud;
-                    int v_pd = pd + 1; // Hardcoded virtual PTV prescribed dose
+                    int v_pd = pd + 0.1; // Hardcoded virtual PTV prescribed dose
                     double v_eud = r->v_eud;
                     if (r->is_ptv) {
                         r->f = 1/(1 + pow(pd/eud, n));
@@ -832,8 +832,8 @@ void optimize(Plan plan) {
         printf("%2d   obj2: %9.24f\n", k, obj2);
         plan.print_table(k);
     }
-    
     double step = 10;
+    //double step = 1e4;
     double decay = 1e-7;
     double min_step = 1e-1;
     double start_time = get_time_s();
@@ -924,7 +924,7 @@ int main(int argc, char **argv) {
     plan.regions[11].set_targets(false,    -1,    -1,    -1, 38.00, 38.00,  10,   5); // Brainstem
     plan.regions[12].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // Oral Cavity
     plan.regions[13].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // Larynx
-    plan.regions[14].set_targets( true, 45.00, 46.00, 47.00, 48.00, 46.00, -50, 100); // PTV 0-46Gy
+    plan.regions[14].set_targets( true, 48.00, 48.10, 48.20, 48.30, 48.20, -50, 50); // PTV 0-46Gy
     plan.regions[15].set_targets(false,    -1,    -1,    -1, 36.80, 36.80,  10,   5); // PTV Shell 15mm
     plan.regions[16].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5); // PTV Shell 30mm
     plan.regions[17].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5); // PTV Shell 40mm
