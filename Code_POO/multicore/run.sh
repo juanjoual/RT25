@@ -5,7 +5,7 @@ set -o xtrace
 
 now=$(date +"%Y%m%d_%H%M%S")
 
-plan=Head-and-Neck_02
+plan=Head-and-Neck_10
 plan_folder=~/Repo/RT25/TROTS/data/$plan
 
 # Adam
@@ -22,7 +22,7 @@ make
 
 
 # # Gardient
-# results_folder=results_gardient
+# results_folder=results_gradient
 # result_path=$results_folder/x_$plan_$now.txt
 # mkdir -p $results_folder
 

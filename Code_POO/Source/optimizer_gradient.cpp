@@ -1,12 +1,12 @@
 #include "Optimizer_Gradient.h"
 
-static volatile int running = 1;
+volatile int running = 1;
 
 void interrupt_handler(int signal) {
     running = 0;
 }
 
-void Optimizer::voxels_eud(Plan *plan, int rid, int pid, double *voxels) {
+void Optimizer_Gradient::voxels_eud(Plan *plan, int rid, int pid, double *voxels) {
     Region *r = &plan->regions[pid*plan->n_regions + rid];
 
     #pragma omp parallel for
@@ -28,7 +28,7 @@ void Optimizer::voxels_eud(Plan *plan, int rid, int pid, double *voxels) {
     }
 }
 
-double Optimizer::penalty(Plan *plan, unsigned int pid) {
+double Optimizer_Gradient::penalty(Plan *plan, unsigned int pid) {
     double penalty = 0;
 
     for (int i = 0; i < plan->n_regions; i++) {
@@ -56,7 +56,7 @@ double Optimizer::penalty(Plan *plan, unsigned int pid) {
     return penalty;
 }
 
-double Optimizer::objective(Plan *plan, unsigned int pid) {
+double Optimizer_Gradient::objective(Plan *plan, unsigned int pid) {
     double objective = 1;
 
     for (int i = 0; i < plan->n_regions; i++) {
@@ -72,7 +72,7 @@ double Optimizer::objective(Plan *plan, unsigned int pid) {
     return objective;
 }
 
-void Optimizer::vector_stats(const char *name, double *vector, int n_values) {
+void Optimizer_Gradient::vector_stats(const char *name, double *vector, int n_values) {
     double min = 1e10, max = 0, avg = 0;
     for (int i = 0; i < n_values; i++) {
         if (vector[i] < min) {
@@ -88,7 +88,7 @@ void Optimizer::vector_stats(const char *name, double *vector, int n_values) {
     printf("%s: %f %f %f\n", name, min, max, avg);
 }
 
-void Optimizer::reduce_gradient(double *voxels, int n_voxels, int n_gradients, int n_plans) {
+void Optimizer_Gradient::reduce_gradient(double *voxels, int n_voxels, int n_gradients, int n_plans) {
     for (int k = 0; k < n_plans; k++) {
         unsigned int poff = k*n_voxels*n_gradients;
         for (int i = 0; i < n_voxels; i++) {
@@ -101,7 +101,7 @@ void Optimizer::reduce_gradient(double *voxels, int n_voxels, int n_gradients, i
     }
 }
 
-void Optimizer::apply_gradient(double *gradient, double *momentum, int n_beamlets, float step, double *fluence, int n_plans, int beta) {
+void Optimizer_Gradient::apply_gradient(double *gradient, double *momentum, int n_beamlets, float step, double *fluence, int n_plans, int beta) {
       
     //#pragma omp parallel for
     for (int i = 0; i < n_plans*n_beamlets; i++) {
@@ -123,7 +123,7 @@ void Optimizer::apply_gradient(double *gradient, double *momentum, int n_beamlet
     }
 }
 
-int Optimizer::descend(Plan *plan, double *voxels, double *gradient, double *momentum, float step) {
+int Optimizer_Gradient::descend(Plan *plan, double *voxels, double *gradient, double *momentum, float step) {
 
     memset(voxels, 0, plan->n_plans*plan->n_voxels*sizeof(*voxels));
     memset(gradient, 0, plan->n_plans*plan->n_beamlets*sizeof(*gradient));
@@ -162,7 +162,7 @@ int Optimizer::descend(Plan *plan, double *voxels, double *gradient, double *mom
     return n_gradients;
 }
 
-void Optimizer::optimize(Plan *plan) {
+void Optimizer_Gradient::optimize(Plan *plan) {
 
     int gradients_per_region = 3; // Warning, hardcoded!
     // *2 because we need two for PTVs, but we're wasting space on organs.
@@ -191,7 +191,7 @@ void Optimizer::optimize(Plan *plan) {
         plan->print_table(k);
     }
 
-    step = 10;
+    step = 1e3;
     decay = 1e-4;
     min_step = 1e-1;
     start_time = get_time_s();
@@ -211,7 +211,7 @@ void Optimizer::optimize(Plan *plan) {
             double pen = penalty(plan, k);
             total_penalty += pen;
         }
-        if (total_penalty <= 2.8) {
+        if (total_penalty <= 1.5) {
             break; 
         }
  

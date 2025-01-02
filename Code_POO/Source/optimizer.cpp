@@ -1,5 +1,7 @@
 #include "Optimizer.h"
 
+volatile int running = 1;
+
 void interrupt_handler(int signal) {
     running = 0;
 }
@@ -221,7 +223,7 @@ void Optimizer::optimize(Plan *plan) {
             double pen = penalty(plan, k);
             total_penalty += pen;
         }
-        if (total_penalty <= 2.8) {
+        if (total_penalty <= 1.5) {
             break; 
         }
  

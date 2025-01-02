@@ -1,14 +1,15 @@
-#ifndef OPTIMIZER_H
-#define OPTIMIZER_H
+#ifndef OPTIMIZER_GRADIENT_H
+#define OPTIMIZER_GRADIENT_H
 
 #include "Plan.h"
 #include "Region.h"
+#include "SparseMatrix.h"
 
-static volatile int running = 1;
+extern volatile int running;
 
 void interrupt_handler(int signal);
 
-struct Optimizer {
+struct Optimizer_Gradient {
     Plan plan;
     double *voxels;
     double *gradient;
@@ -35,4 +36,4 @@ struct Optimizer {
 
 
 
-#endif // OPTIMIZER_H
+#endif // OPTIMIZER_GRADIENT_H

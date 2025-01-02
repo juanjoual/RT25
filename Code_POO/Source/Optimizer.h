@@ -5,7 +5,7 @@
 #include "Region.h"
 #include "SparseMatrix.h"
 
-static volatile int running = 1;
+extern volatile int running;
 
 void interrupt_handler(int signal);
 
