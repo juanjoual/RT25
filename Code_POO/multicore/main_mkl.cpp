@@ -23,8 +23,8 @@ int main(int argc, char **argv) {
     int n_plans = 1; // Hardcoded to 1 plan for TROTS
 
     Plan plan = {};
-    // Optimizer optimizer;
-    Optimizer_Gradient optimizer_gradient;
+    Optimizer optimizer;
+    // Optimizer_Gradient optimizer_gradient;
     plan.n_plans = n_plans;
     plan.load(plan_path, fluence_path, fluence_prefix);
 
@@ -50,8 +50,8 @@ int main(int argc, char **argv) {
     plan.regions[19].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5); // PTV Shell 0mm
     plan.regions[20].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5); // Ext. Ring 20mm
 
-    // optimizer.optimize(&plan);
-    optimizer_gradient.optimize(&plan);
+    optimizer.optimize(&plan);
+    // optimizer_gradient.optimize(&plan);
 
     FILE *f = fopen(out_path, "w");
     for (int i = 0; i < plan.n_beamlets; i++) {
