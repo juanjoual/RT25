@@ -3,3 +3,12 @@ data
 *.txt
 adam_mkl
 gradient_mkl
+*.log
+*.csv
+*.pkl
+*.fls
+*.aux
+*.fdb_latexmk
+*.synctex.gz
+*.pdf
+*.out
