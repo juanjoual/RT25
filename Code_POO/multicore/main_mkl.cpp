@@ -57,6 +57,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < plan.n_beamlets; i++) {
         fprintf(f, "%.10e\n", plan.fluence[i]);
     }
+
     fclose(f);
     printf("Last fluence written to %s\n", out_path);
 }
