@@ -211,7 +211,7 @@ void Optimizer_Gradient::optimize(Plan *plan) {
             double pen = penalty(plan, k);
             total_penalty += pen;
         }
-        if (total_penalty <= 1.5) {
+        if (total_penalty <= 4.16) {
             break; 
         }
  

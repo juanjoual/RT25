@@ -223,7 +223,7 @@ void Optimizer::optimize(Plan *plan) {
             double pen = penalty(plan, k);
             total_penalty += pen;
         }
-        if (total_penalty <= 1.5) {
+        if (total_penalty <= 4.16) {
             break; 
         }
  
@@ -243,6 +243,8 @@ void Optimizer::optimize(Plan *plan) {
                 printf("%2d    obj: %9.6f\n", k, obj); 
                 printf("%2d   obj2: %9.24f\n", k, obj2);
                 plan->print_table(k);
+
+
             }
         }
         // if (step > min_step) 
@@ -264,6 +266,7 @@ void Optimizer::optimize(Plan *plan) {
         printf("%2d    obj: %9.6f\n", k, obj); 
         printf("%2d   obj2: %9.24f\n", k, obj2);
         plan->print_table(k);
+     
     }
 
     free(voxels);
