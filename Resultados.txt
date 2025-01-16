@@ -1,0 +1,30 @@
+Head and Neck 02
+
+Método de Adam                  Método del Gradiente por Descenso
+# Iteraciones   Tiempo          # Iteraciones   Tiempo
+12500           1171.9          43100           4115.06
+
+Head and Neck 01
+
+Método de Adam                  Método del Gradiente por Descenso
+# Iteraciones   Tiempo          # Iteraciones   Tiempo
+8900           1070.26          28000           3325.69
+
+Head and Neck 03
+
+Método de Adam                  Método del Gradiente por Descenso
+# Iteraciones   Tiempo          # Iteraciones   Tiempo
+13500           1319.48            44900           4719,93
+
+Head and Neck 04
+
+Método de Adam                  Método del Gradiente por Descenso
+# Iteraciones   Tiempo          # Iteraciones   Tiempo
+14100           1586.56            44900           4719,93
+
+Head and Neck 15
+
+Método de Adam                  Método del Gradiente por Descenso
+# Iteraciones   Tiempo          # Iteraciones   Tiempo
+14100           1636.43            44900           4719,93
+

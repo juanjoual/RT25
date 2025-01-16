@@ -1,6 +1,5 @@
 *.vscode
 data
-*.txt
 adam_mkl
 gradient_mkl
 *.log
