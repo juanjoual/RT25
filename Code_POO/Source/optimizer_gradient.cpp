@@ -211,9 +211,9 @@ void Optimizer_Gradient::optimize(Plan *plan) {
             double pen = penalty(plan, k);
             total_penalty += pen;
         }
-        if (total_penalty <= 4.16) {
-            break; 
-        }
+        // if (total_penalty <= 4.16) {
+        //     break; 
+        // }
  
 
         if (it % 100 == 0) {
@@ -236,8 +236,8 @@ void Optimizer_Gradient::optimize(Plan *plan) {
         // if (step > min_step) 
         //    step = step/(1 + decay*it);
         it++;
-        //if (it == 2000)
-        //    break;
+        if (it == 1308)
+           break;
     }
 
     double elapsed = get_time_s() - start_time;

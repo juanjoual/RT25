@@ -113,7 +113,7 @@ void Optimizer::adam(double *gradient, double *momentum, double *variance, int n
         // Actualizar momento del primer orden (m_t)
         momentum[i] = beta1*momentum[i] + (1-beta1)*gradient[i]; 
         // Actualizar momento del segundo orden (v_t)
-        variance[i] = beta2 *variance[i] + (1-beta2)*gradient[i]*gradient[i] + epsilon;
+        variance[i] = beta2*variance[i] + (1-beta2)*gradient[i]*gradient[i] + epsilon;
         
         // Corregir sesgo
         double m_hat = momentum[i]/(1 - pow(beta1, t));
@@ -223,9 +223,9 @@ void Optimizer::optimize(Plan *plan) {
             double pen = penalty(plan, k);
             total_penalty += pen;
         }
-        if (total_penalty <= 4.16) {
-            break; 
-        }
+        // if (total_penalty <= 4.16) {
+        //     break; 
+        // }
  
 
         if (it % 100 == 0) {
