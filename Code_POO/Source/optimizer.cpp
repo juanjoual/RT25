@@ -114,13 +114,13 @@ void Optimizer::adam(double *gradient, double *momentum, double *variance, int n
         momentum[i] = beta1*momentum[i] + (1-beta1)*gradient[i]; 
         // Actualizar momento del segundo orden (v_t)
         variance[i] = beta2*variance[i] + (1-beta2)*gradient[i]*gradient[i] + epsilon;
-        
-        // Corregir sesgo
+
         double m_hat = momentum[i]/(1 - pow(beta1, t));
         double v_hat = variance[i]/(1 - pow(beta2, t));
      
         // Actualización de la fluencia
         fluence[i] += step * m_hat/(sqrt(v_hat) + epsilon);
+
 
         if (fluence[i] < 0) {
             fluence[i] = 0;
