@@ -12,6 +12,7 @@ void Optimizer::voxels_eud(Plan *plan, int rid, int pid, double *voxels) {
     #pragma omp parallel for
     for (int i = 0; i < plan->n_voxels; i++) {
         double dose = plan->doses[pid*plan->n_voxels + i];
+        
         if (plan->voxel_regions[rid*plan->n_voxels + i]) {
             double dEUD_dd = r->eud*pow(dose, r->alpha - 1)/r->sum_alpha;
             voxels[i] = r->dF_dEUD * dEUD_dd;
@@ -25,7 +26,9 @@ void Optimizer::voxels_eud(Plan *plan, int rid, int pid, double *voxels) {
                 voxels[plan->n_voxels + i] = 0;
             }
         }
+
     }
+
 }
 
 double Optimizer::penalty(Plan *plan, unsigned int pid) {
@@ -223,9 +226,7 @@ void Optimizer::optimize(Plan *plan) {
             double pen = penalty(plan, k);
             total_penalty += pen;
         }
-        // if (total_penalty <= 4.16) {
-        //     break; 
-        // }
+
  
 
         if (it % 100 == 0) {

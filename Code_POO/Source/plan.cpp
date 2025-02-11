@@ -352,6 +352,7 @@ void Plan::init_fluence(float value) {
     for (int i = 0; i < n_plans; i++) {
         for (int j = 0; j < n_beamlets; j++) {
             fluence[i*n_beamlets + j] = value;
+            
         }
     }
 }
@@ -386,8 +387,13 @@ void Plan::compute_dose() {
     #pragma omp parallel for
     for (int i = 0; i < n_voxels*n_plans; i++) {
         doses[i] *= dose_grid_scaling;
+        
     }
+
+   
+ 
 }
+
 
 void Plan::stats() {
     #pragma omp parallel for collapse(2)
@@ -529,5 +535,10 @@ void Plan::smooth_cpu() {
     #pragma omp parallel for
     for (int i = 0; i < n_beamlets*n_plans; i++) {
         fluence[i] = smoothed_fluence[i];
+        
+        
     }
+
+
+
 }
