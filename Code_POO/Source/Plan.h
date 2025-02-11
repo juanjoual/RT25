@@ -52,6 +52,7 @@ struct Plan {
     void print_table(int pid);
     void load(const char *plan_path, const char *fluence_path, const char *fluence_prefix);
     void smooth_cpu();
+   
 
 };
 

@@ -1,4 +1,4 @@
-CC = gcc
+CC = g++
 FLAGS = -O3 -fopenmp
 INCLUDE = -I../Source
 LIBS = -L/opt/intel/oneapi/mkl/2025.0/lib/intel64 -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl
