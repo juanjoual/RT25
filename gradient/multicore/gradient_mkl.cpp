@@ -832,8 +832,7 @@ void optimize(Plan plan) {
         printf("%2d   obj2: %9.24f\n", k, obj2);
         plan.print_table(k);
     }
-    double step = 10;
-    //double step = 1e4;
+    double step = 1e4;
     double decay = 1e-7;
     double min_step = 1e-1;
     double start_time = get_time_s();
@@ -867,8 +866,8 @@ void optimize(Plan plan) {
         //if (step > min_step) 
         //    step = step/(1 + decay*it);
         it++;
-        //if (it == 2000)
-        //    break;
+        if (it == 200000)
+            break;
     }
 
     double elapsed = get_time_s() - start_time;
@@ -912,10 +911,10 @@ int main(int argc, char **argv) {
 
     plan.regions[ 0].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // Patient
     plan.regions[ 1].set_targets(false,    -1,    -1,    -1, 38.00, 38.00,  10,   5); // Spinal Cord
-    plan.regions[ 2].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // Parotid (R)
-    plan.regions[ 3].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // Parotid (L)
-    plan.regions[ 4].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // SMG (R)
-    plan.regions[ 5].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // SMG (L)
+    plan.regions[ 2].set_targets(false,    -1,    -1,    -1, 48.30, 18.30,   1,   10); // Parotid (R)
+    plan.regions[ 3].set_targets(false,    -1,    -1,    -1, 48.30, 18.30,   1,   10); // Parotid (L)
+    plan.regions[ 4].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,   1,   5); // SMG (R)
+    plan.regions[ 5].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,   1,   5); // SMG (L)
     plan.regions[ 6].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // MCS
     plan.regions[ 7].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // MCM
     plan.regions[ 8].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // MCI
@@ -924,13 +923,13 @@ int main(int argc, char **argv) {
     plan.regions[11].set_targets(false,    -1,    -1,    -1, 38.00, 38.00,  10,   5); // Brainstem
     plan.regions[12].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // Oral Cavity
     plan.regions[13].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // Larynx
-    plan.regions[14].set_targets( true, 48.00, 48.10, 48.20, 48.30, 48.20, -50, 50); // PTV 0-46Gy
+    plan.regions[14].set_targets( true, 48.00, 48.10, 49.20, 48.30, 48.20, -50,  70); // PTV 0-46Gy
     plan.regions[15].set_targets(false,    -1,    -1,    -1, 36.80, 36.80,  10,   5); // PTV Shell 15mm
     plan.regions[16].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5); // PTV Shell 30mm
     plan.regions[17].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5); // PTV Shell 40mm
-    plan.regions[18].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5); // PTV Shell 5mm
-    plan.regions[19].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5); // PTV Shell 0mm
-    plan.regions[20].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5); // Ext. Ring 20mm
+    plan.regions[18].set_targets(false,    -1,    -1,    -1, 43.70, 43.70,  10,   5); // PTV Shell 5mm
+    plan.regions[19].set_targets(false,    -1,    -1,    -1, 46.00, 46.00,  10,   5); // PTV Shell 0mm
+    plan.regions[20].set_targets(false,    -1,    -1,    -1, 41.40, 41.40,  10,   5); // Ext. Ring 20mm
 
     optimize(plan);
 
