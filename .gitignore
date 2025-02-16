@@ -1,5 +1,6 @@
 *.vscode
 data
+NIO
 adam_mkl
 gradient_mkl
 *.log
