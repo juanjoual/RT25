@@ -832,8 +832,10 @@ void optimize(Plan plan) {
         unsigned int poff = k*plan.n_regions;
         double pen = penalty(plan, k);
         double obj = plan.regions[poff + rid_sll].avg + plan.regions[poff + rid_slr].avg;
-        printf("%2d penalty: %9.6f\n", k, pen);
-        printf("%2d    obj: %9.6f\n", k, obj); 
+        double f = objective(plan, k);
+        printf("%2d   penalty: %9.6f\n", k, pen);
+        printf("%2d objective: %9.6f\n", k, obj); 
+        printf("%2d         f: %9.8f\n", k, f);
         plan.print_table(k);
     }
     double step = 5e-7;
@@ -860,15 +862,17 @@ void optimize(Plan plan) {
 
                 double pen = penalty(plan, k);
                 double obj = plan.regions[poff + rid_sll].avg + plan.regions[poff + rid_slr].avg;
-                printf("%2d penalty: %9.6f\n", k, pen);
-                printf("%2d    obj: %9.6f\n", k, obj); 
+                double f = objective(plan, k);
+                printf("%2d   penalty: %9.6f\n", k, pen);
+                printf("%2d objective: %9.6f\n", k, obj); 
+                printf("%2d         f: %9.8f\n", k, f);
                 plan.print_table(k);
             }
         }
         //if (step > min_step) 
         //    step = step/(1 + decay*it);
         it++;
-        if (it == 200000)
+        if (it == 100000)
             break;
     }
 
@@ -879,10 +883,10 @@ void optimize(Plan plan) {
 
         double pen = penalty(plan, k);
         double obj = plan.regions[poff + rid_sll].avg + plan.regions[poff + rid_slr].avg;
-        double obj2 = objective(plan, k);
-        printf("%2d penalty: %9.6f\n", k, pen);
-        printf("%2d    obj: %9.6f\n", k, obj); 
-        //printf("%2d   obj2: %9.24f\n", k, obj2);
+        double f = objective(plan, k);
+        printf("%2d   penalty: %9.6f\n", k, pen);
+        printf("%2d objective: %9.6f\n", k, obj); 
+        printf("%2d         f: %9.8f\n", k, f);
         plan.print_table(k);
     }
 
