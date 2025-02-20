@@ -16,6 +16,8 @@ struct Optimizer {
     double *momentum;
     double *variance;
     double *fluence;
+    double m_hat;
+    double v_hat;
     float step;
     int t;
     double beta1;
