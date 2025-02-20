@@ -1,6 +1,7 @@
 *.vscode
 data
 NIO
+Results
 adam_mkl
 gradient_mkl
 *.log
@@ -12,3 +13,4 @@ gradient_mkl
 *.synctex.gz
 *.pdf
 *.out
+*.txt
