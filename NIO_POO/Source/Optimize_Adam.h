@@ -12,9 +12,8 @@ void interrupt_handler(int signal);
 struct Optimize_adam {
     Plan plan;
     
-
     // methods
-   
+    
     void voxels_eud(Plan plan, int rid, int pid, double *voxels);
     double penalty(Plan plan, unsigned int pid);
     double objective(Plan plan, unsigned int pid);
