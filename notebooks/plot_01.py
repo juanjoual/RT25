@@ -57,7 +57,7 @@ def plot_logs(x_list, y1_list, y2_list, labels, title, x_label, y1_label, y2_lab
     plt.show()
 
 # Cargar datos del primer archivo
-filename1 = '../NIO_POO/Adam_log/3_08.log'
+filename1 = '../NIO_POO/Adam_log/3_099.log'
 iterations1, penalties1, objectives1, fs1 = read_log(filename1)
 start = 0
 end = 120
