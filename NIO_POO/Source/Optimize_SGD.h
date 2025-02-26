@@ -11,7 +11,7 @@ void interrupt_handler(int signal);
 
 struct Optimize_sgd {
     Plan plan;
-    
+   
 
     // methods
    
