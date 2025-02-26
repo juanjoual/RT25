@@ -103,12 +103,12 @@ void Optimize_adam::reduce_gradient(double *voxels, int n_voxels, int n_gradient
 
 void Optimize_adam::adam(double *gradient, double *momentum, double *variance, int n_beamlets, float step, double *fluence, int n_plans, int t) {
 
-    double beta1 = 0.9, beta2 = 0.999, epsilon = 1e-8;
+    double beta1 = 0.9, beta2 = 0.8, epsilon = 1e-8;
 
     //#pragma omp parallel for
     for (int i = 0; i < n_plans*n_beamlets; i++) {
         if (isnan(gradient[i])) {
-            printf("%d %f %f %f %f\n", i, fluence[i], gradient[i], momentum[i], fluence[i] + step*momentum[i]);
+            printf("%d %f %f %f %f\n", i, fluence[i], gradient[i], momentum[i], variance[i]);
             exit(EXIT_FAILURE);
         }
 
@@ -206,7 +206,7 @@ void Optimize_adam::optimize(Plan plan) {
         printf("%2d         f: %9.8f\n", k, f);
         plan.print_table(k);
     }
-    double step = 1e-2;
+    double step = 1e-3;
     double decay = 1e-7;
     double min_step = 1e-1;
     double start_time = get_time_s();
@@ -244,7 +244,7 @@ void Optimize_adam::optimize(Plan plan) {
         //if (step > min_step) 
         //    step = step/(1 + decay*it);
         it++;
-        if (it == 100000)
+        if (it == 12000)
             break;
     }
 
