@@ -5,7 +5,7 @@ set -o xtrace
 
 now=$(date +"%Y%m%d_%H%M%S")
 
-plan=3
+plan=5
 # plan=$1
 plan_folder=~/Repo/RT25/NIO/$plan
 
