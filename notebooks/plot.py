@@ -53,7 +53,7 @@ def plot_logs(x_list, y1_list, y2_list, labels, title, x_label, y1_label, y2_lab
     plt.show()
 
 # Cargar datos del primer archivo
-filename1 = '../NIO_POO/Adam_log/3.log'
+filename1 = '../NIO_POO/Adam_log/4.log' 
 iterations1, penalties1, objectives1, fs1 = read_log(filename1)
 start = 0
 end = 120
@@ -63,7 +63,7 @@ objectives1 = objectives1[start:end]
 fs1 = fs1[start:end]
 
 # Cargar datos del segundo archivo
-filename2 = '../NIO_POO/SGD_log/3.log'  
+filename2 = '../NIO_POO/SGD_log/4/4.log'  
 iterations2, penalties2, objectives2, fs2 = read_log(filename2)
 iterations2 = iterations2[start:end]
 penalties2 = penalties2[start:end]

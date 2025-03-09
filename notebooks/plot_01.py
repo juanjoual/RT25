@@ -86,7 +86,7 @@ penalties3 = penalties3[start:end]
 objectives3 = objectives3[start:end]
 fs3 = fs3[start:end]
 
-labels = ['Adam_0.99', 'Adam_0.9', 'SGD']  
+labels = [r"Adam $\beta_2=0.99$", r"Adam $\beta_2=0.9$", "SGD"] 
 
 # Graficar
 plot_logs(
@@ -98,8 +98,8 @@ plot_logs(
     x_label="Iterations",
     y1_label="Objetive",
     y2_label="Penalty",
-    y1_colors=['blue', 'green', 'black'], 
-    y2_colors=['orange', 'red', 'black'] 
+    y1_colors=['blue', 'green', 'aqua'], 
+    y2_colors=['orange', 'red', 'violet'] 
 )
 
 plot_logs(
@@ -111,8 +111,8 @@ plot_logs(
     x_label="Iterations",
     y1_label="F",
     y2_label="Objetive",
-    y1_colors=['blue', 'green', 'black'], 
-    y2_colors=['orange', 'red', 'black'] 
+    y1_colors=['blue', 'green', 'aqua'], 
+    y2_colors=['orange', 'red', 'violet']  
 )
 
 plot_logs(
@@ -124,6 +124,6 @@ plot_logs(
     x_label="Iterations",
     y1_label="F",
     y2_label="Penalty",
-    y1_colors=['blue', 'green', 'black'], 
-    y2_colors=['orange', 'red', 'black'] 
+y1_colors=['blue', 'green', 'aqua'], 
+    y2_colors=['orange', 'red', 'violet'] 
 )
