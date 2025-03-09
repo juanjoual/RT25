@@ -2,6 +2,7 @@
 data
 NIO
 Results
+Results_tex
 adam_mkl
 gradient_mkl
 *.log
