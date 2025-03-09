@@ -103,7 +103,7 @@ void Optimize_sgd::reduce_gradient(double *voxels, int n_voxels, int n_gradients
 
 void Optimize_sgd::apply_gradient(double *gradient, double *momentum, int n_beamlets, float step, double *fluence, int n_plans) {
 
-    int beta = 0.999;
+    int beta = 0.9;
 
     //#pragma omp parallel for
     for (int i = 0; i < n_plans*n_beamlets; i++) {
@@ -228,7 +228,7 @@ void Optimize_sgd::optimize(Plan plan) {
         //if (step > min_step) 
         //    step = step/(1 + decay*it);
         it++;
-        if (it == 30000)
+        if (it == 12000)
             break;
     }
 

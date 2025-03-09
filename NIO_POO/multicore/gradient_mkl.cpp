@@ -74,7 +74,8 @@ int main(int argc, char **argv) {
             plan.regions[k*plan.n_regions + 11].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
         }
     }
-        
+
+
     optimize_gradient.optimize(plan);
 
     FILE *f = fopen(out_path, "w");
