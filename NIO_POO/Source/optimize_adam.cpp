@@ -103,7 +103,7 @@ void Optimize_adam::reduce_gradient(double *voxels, int n_voxels, int n_gradient
 
 void Optimize_adam::adam(double *gradient, double *momentum, double *variance, int n_beamlets, float step, double *fluence, int n_plans, int t) {
 
-    double beta1 = 0.9, beta2 = 0.8, epsilon = 1e-8;
+    double beta1 = 0.9, beta2 = 0.9, epsilon = 1e-8;
 
     //#pragma omp parallel for
     for (int i = 0; i < n_plans*n_beamlets; i++) {
