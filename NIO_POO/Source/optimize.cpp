@@ -113,8 +113,8 @@ void Optimize_adam::adam(double *gradient, double *momentum, double *variance, i
             exit(EXIT_FAILURE);
         }
 
-        // Methods: 0 = AdaBelief, 1 = Adam, 2 = GD
-        use_method = 1;
+        // Methods: 0 = AdaBelief, 1 = Adam
+        use_method = 0;
         // Atualizacion del momentum para todos los metodos
         momentum[i] = beta1*momentum[i] + (1-beta1)*gradient[i];
         
@@ -139,7 +139,7 @@ void Optimize_adam::adam(double *gradient, double *momentum, double *variance, i
         
             fluence[i] += step * m_hat/(sqrt(v_hat) + epsilon);
           
-        } else if (use_method == 2) {
+        } else {
             // GD
             step = 5e-7;
             fluence[i] += step*momentum[i];
