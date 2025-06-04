@@ -104,36 +104,59 @@ void Optimizer::reduce_gradient(double *voxels, int n_voxels, int n_gradients, i
     }
 }
 
-void Optimizer::adam(double *gradient, double *momentum, double *variance, int n_beamlets, float step, double *fluence, int n_plans, int t, double beta1, double beta2, double epsilon) {
+void Optimizer::adam(double *gradient, double *momentum, double *variance, int n_beamlets, float step, double *fluence, int n_plans, int t) {
+
       
-    //#pragma omp parallel for
+    beta1 = 0.9, beta2 = 0.9, epsilon = 1e-8;
+    //#pragma omp parallel 
     for (int i = 0; i < n_plans*n_beamlets; i++) {
         if (isnan(gradient[i])) {
             printf("i[%d], fluence[%d] = %f, gradient[%d] = %f, momentum[%d] = %f, variance[%d]= %f \n", i, i, fluence[i], i, gradient[i], i, momentum[i], i, variance[i]);
             exit(EXIT_FAILURE);
         }
+        
+        // printf("i[%d], fluence[%d] = %f, gradient[%d] = %f, momentum[%d] = %f, variance[%d]= %f \n", i, i, fluence[i], i, gradient[i], i, momentum[i], i, variance[i]);
 
-        // Actualizar momento del primer orden (m_t)
-        momentum[i] = beta1*momentum[i] + (1-beta1)*gradient[i]; 
-        // Actualizar momento del segundo orden (v_t)
-        variance[i] = beta2*variance[i] + (1-beta2)*gradient[i]*gradient[i] + epsilon;
+        // Methods: 0 = AdaBelief, 1 = Adam, 2 = GD
+        use_method = 0;
+        // Atualizacion del momentum para todos los metodos
+        momentum[i] = beta1*momentum[i] + (1-beta1)*gradient[i];
+        
+        if (use_method == 0) {
+            // AdaBelief
 
-        m_hat = momentum[i]/(1 - pow(beta1, t));
-        v_hat = variance[i]/(1 - pow(beta2, t));
+            double diff = gradient[i] - momentum[i];  
+            variance[i] = beta2 * variance[i] + (1 - beta2) * diff * diff;
 
- 
-     
-        // Actualización de la fluencia
-        fluence[i] += step * m_hat/(sqrt(v_hat) + epsilon);
+            double m_hat = momentum[i] / (1 - pow(beta1, t));
+            double v_hat = variance[i] / (1 - pow(beta2, t));
+
+            // Aplicar actualización de AdaBelief
+            fluence[i] += step * m_hat / (sqrt(v_hat) + epsilon);
+
+        } else if (use_method == 1) {
+            // Adam
+            variance[i] = beta2*variance[i] + (1-beta2)*gradient[i]*gradient[i];
+
+            double m_hat = momentum[i]/(1 - pow(beta1, t));
+            double v_hat = variance[i]/(1 - pow(beta2, t));
+        
+            fluence[i] += step * m_hat/(sqrt(v_hat) + epsilon);
+          
+        } else if (use_method == 2) {
+            // GD
+            step = 1e3;
+            fluence[i] += step*momentum[i];
+        }
 
 
         if (fluence[i] < 0) {
             fluence[i] = 0;
         }
         // There's no max fluence on TROTS??
-        //if (fluence[i] > 0.3) {
+        // if (fluence[i] > 0.3) {
         //    fluence[i] = 0.3;
-        //}
+        // }
     }
 }
 
@@ -163,7 +186,7 @@ int Optimizer::descend(Plan *plan, double *voxels, double *gradient, double *mom
     n_gradients /= plan->n_plans;
     reduce_gradient(voxels, plan->n_voxels, n_gradients, plan->n_plans);
     
-    double alpha = 1.0, beta = 0.0;
+    double alpha = 1., beta = 0.0;
     double start_time = get_time_s();
     //mkl_sparse_d_mv(SPARSE_OPERATION_NON_TRANSPOSE, alpha, plan.m_t, plan.descr, voxels, beta, gradient);
     mkl_sparse_d_mm(SPARSE_OPERATION_NON_TRANSPOSE, alpha, plan->m_t, plan->descr,SPARSE_LAYOUT_COLUMN_MAJOR, 
@@ -179,7 +202,7 @@ void Optimizer::optimize(Plan *plan) {
     int gradients_per_region = 3; // Warning, hardcoded!
     // *2 because we need two for PTVs, but we're wasting space on organs.
      
-    beta1 = 0.9, beta2 = 0.999, epsilon = 1e-8;
+    
  
     double *voxels = (double *) malloc(plan->n_plans*plan->n_voxels*plan->n_regions*2*sizeof(*voxels)); 
     double *gradient = (double *) malloc(plan->n_plans*plan->n_beamlets*sizeof(*gradient));
@@ -201,11 +224,11 @@ void Optimizer::optimize(Plan *plan) {
         double obj2 = objective(plan, k);
         printf("%2d penalty: %9.6f\n", k, pen);
         printf("%2d    obj: %9.6f\n", k, obj); 
-        printf("%2d   obj2: %9.24f\n", k, obj2);
+        printf("%2d   f: %9.24f\n", k, obj2);
         plan->print_table(k);
     }
 
-    step = 1e1;
+    step = 1e2;
     decay = 1e-4;
     min_step = 1e-1;
     start_time = get_time_s();
@@ -215,7 +238,7 @@ void Optimizer::optimize(Plan *plan) {
         int t = it+1;
 
         descend(plan, voxels, gradient, momentum, step);
-        adam(gradient, momentum, variance, plan->n_beamlets, step, plan->fluence, plan->n_plans, t, beta1, beta2, epsilon);
+        adam(gradient, momentum, variance, plan->n_beamlets, step, plan->fluence, plan->n_plans, t);
 
         //plan.smooth_cpu();
         plan->compute_dose();
@@ -244,7 +267,7 @@ void Optimizer::optimize(Plan *plan) {
                 double obj2 = objective(plan, k);
                 printf("%2d penalty: %9.6f\n", k, pen);
                 printf("%2d    obj: %9.6f\n", k, obj); 
-                printf("%2d   obj2: %9.24f\n", k, obj2);
+                printf("%2d   f: %9.24f\n", k, obj2);
                 plan->print_table(k);
 
 
@@ -253,7 +276,7 @@ void Optimizer::optimize(Plan *plan) {
         // if (step > min_step) 
         //    step = step/(1 + decay*t); // Decaimiento inverso
         it++;
-        //if (it == 2000)
+        // if (it == 1300)
         //    break;
     }
 
@@ -267,7 +290,7 @@ void Optimizer::optimize(Plan *plan) {
         double obj2 = objective(plan, k);
         printf("%2d penalty: %9.6f\n", k, pen);
         printf("%2d    obj: %9.6f\n", k, obj); 
-        printf("%2d   obj2: %9.24f\n", k, obj2);
+        printf("%2d   f: %9.24f\n", k, obj2);
         plan->print_table(k);
      
     }

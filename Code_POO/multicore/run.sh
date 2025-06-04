@@ -19,7 +19,7 @@ fluence_folder=~/Repo/RT25/TROTS/data/$plan
 fluence_prefix=x_
 
 make
-./adam_mkl $plan_folder $result_path $fluence_folder $fluence_prefix
+./mkl $plan_folder $result_path $fluence_folder $fluence_prefix
 
 
 # # Gardient

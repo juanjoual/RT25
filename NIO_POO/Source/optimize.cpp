@@ -96,7 +96,7 @@ void Optimize_adam::reduce_gradient(double *voxels, int n_voxels, int n_gradient
             double influence = 0;
             for (int j = 0; j < n_gradients; j++) {
                 influence += voxels[poff + j*n_voxels + i];
-            }
+            } 
             voxels[k*n_voxels + i] = influence;
         }
     }
@@ -113,7 +113,7 @@ void Optimize_adam::adam(double *gradient, double *momentum, double *variance, i
             exit(EXIT_FAILURE);
         }
 
-        // Methods: 0 = AdaBelief, 1 = Adam
+        // Methods: 0 = AdaBelief, 1 = Adam, 2 = GD
         use_method = 0;
         // Atualizacion del momentum para todos los metodos
         momentum[i] = beta1*momentum[i] + (1-beta1)*gradient[i];
@@ -139,7 +139,7 @@ void Optimize_adam::adam(double *gradient, double *momentum, double *variance, i
         
             fluence[i] += step * m_hat/(sqrt(v_hat) + epsilon);
           
-        } else {
+        } else if (use_method == 2) {
             // GD
             step = 5e-7;
             fluence[i] += step*momentum[i];

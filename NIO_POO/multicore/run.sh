@@ -5,14 +5,13 @@ set -o xtrace
 
 now=$(date +"%Y%m%d_%H%M%S")
 
-plan=3
+plan=5
 # plan=$1
 plan_folder=~/Repo/RT25/NIO/$plan
 
 # Methods
-folder=../../Results/Adam
-# folder=../../Results/Adabelief
-# folder=../../Results/SGD
+folder=../../Results/NIO_GD
+
 results_folder=$folder/$plan 
 result_path=$results_folder/x_$plan_$now.txt
 mkdir -p $results_folder
