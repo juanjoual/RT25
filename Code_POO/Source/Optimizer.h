@@ -11,6 +11,7 @@ void interrupt_handler(int signal);
 
 struct Optimizer {
     Plan plan;
+    int use_method;
     double *voxels;
     double *gradient;
     double *momentum;
@@ -34,7 +35,7 @@ struct Optimizer {
     double objective(Plan *plan, unsigned int pid);
     void vector_stats(const char *name, double *vector, int n_values);
     void reduce_gradient(double *voxels, int n_voxels, int n_gradients, int n_plans);
-    void adam(double *gradient, double *momentum, double *variance, int n_beamlets, float step, double *fluence, int n_plans, int t, double beta1, double beta2, double epsilon);
+    void adam(double *gradient, double *momentum, double *variance, int n_beamlets, float step, double *fluence, int n_plans, int t); 
     int descend(Plan *plan, double *voxels, double *gradient, double *momentum, float step);
     void optimize(Plan *plan);
 

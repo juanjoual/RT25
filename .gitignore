@@ -16,3 +16,4 @@ gradient_mkl
 *.pdf
 *.out
 *.txt
+results_adam

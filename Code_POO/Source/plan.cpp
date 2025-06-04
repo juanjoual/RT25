@@ -377,7 +377,7 @@ void Plan::print() {
 void Plan::compute_dose() {
     memset(doses, 0, n_plans*n_voxels*sizeof(*doses));
 
-    double alpha = 1.0, beta = 0.0;
+    double alpha = 1., beta = 0.0;
 
     double start_time = get_time_s();
     mkl_sparse_d_mm(SPARSE_OPERATION_NON_TRANSPOSE, alpha, m, descr, SPARSE_LAYOUT_COLUMN_MAJOR, fluence, n_plans, n_beamlets, beta, doses, n_voxels);
@@ -400,7 +400,7 @@ void Plan::stats() {
     for (int k = 0; k < n_plans; k++) {
         for (int i = 0; i < n_regions; i++) {
             Region *r = &regions[k*n_regions + i];
-
+            
             r->min = 1e10;
             r->max = 0;
             r->avg = 0;
@@ -455,6 +455,7 @@ void Plan::stats() {
     }
 }
 
+
 void Plan::print_table(int pid) {
     printf("%2d    Region               Min       Avg       Max       EUD     v_EUD\n", pid); 
     for (int i = 0; i < n_regions; i++) {
@@ -474,7 +475,7 @@ void Plan::load(const char *plan_path, const char *fluence_path, const char *flu
     smoothed_fluence = (double *) malloc(n_plans*n_beamlets*sizeof(double));
     doses = (double *) malloc(n_plans*n_voxels*sizeof(double));
 
-    //load_coords(plan_path);
+    load_coords(plan_path);
 
     //load_fluence(fluence_path, fluence_prefix);
     init_fluence(10);
