@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
-
+import matplotlib.cm as cm
+import numpy as np
 
 def read_log(filename, verbose=False):
     if verbose:
@@ -53,61 +54,123 @@ def plot_logs(x_list, y1_list, y2_list, labels, title, x_label, y1_label, y2_lab
     plt.show()
 
 # Cargar datos del primer archivo
-filename1 = '../NIO_POO/Adam_log/4.log' 
-iterations1, penalties1, objectives1, fs1 = read_log(filename1)
+
+filenames= [
+    '../Code_POO/multicore/p_01.log',
+    '../Code_POO/multicore/p_02.log',
+    '../Code_POO/multicore/p_03.log',
+]
+
+labels = [
+    'HaN_01',
+    'HaN_02',
+    'HaN_03'
+]
+
 start = 0
 end = 120
-iterations1 = iterations1[start:end]
-penalties1 = penalties1[start:end]
-objectives1 = objectives1[start:end]
-fs1 = fs1[start:end]
 
-# Cargar datos del segundo archivo
-filename2 = '../NIO_POO/SGD_log/4/4.log'  
-iterations2, penalties2, objectives2, fs2 = read_log(filename2)
-iterations2 = iterations2[start:end]
-penalties2 = penalties2[start:end]
-objectives2 = objectives2[start:end]
-fs2 = fs2[start:end]
+x_list = []
+y1_list = []  # F
+y2_list = []  # Objective
+y3_list = []  # Penalty
 
-labels = ['Adam', 'SGD']  
+for f in filenames:
+    print(f'Processing file: {f}')
+    iterations, penalties, objectives, fs = read_log(f)
+    
+    x_list.append(iterations[start:end])
+    y1_list.append(fs[start:end])
+    y2_list.append(objectives[start:end])
+    y3_list.append(penalties[start:end])
 
-# Graficar
-plot_logs(
-    x_list=[iterations1, iterations2],
-    y1_list=[objectives1, objectives2],
-    y2_list=[penalties1, penalties2],
-    labels=labels,
-    title="Comparison of Curves",
-    x_label="Iterations",
-    y1_label="Objetive",
-    y2_label="Penalty",
-    y1_colors=['blue', 'green'], 
-    y2_colors=['orange', 'red'] 
-)
+num_patients = len(filenames)
+
+cmap1 = cm.get_cmap('tab10', num_patients)
+cmap2 = cm.get_cmap('Set1', num_patients)
+
+y1_colors = [cmap1(i) for i in range(num_patients)]  # Para F
+y2_colors = [cmap2(i) for i in range(num_patients)]  # Para Objective o Penalty
+
 
 plot_logs(
-    x_list=[iterations1, iterations2],
-    y1_list=[fs1, fs2],
-    y2_list=[objectives1, objectives2],
+    x_list=x_list,
+    y1_list=y1_list,
+    y2_list=y2_list,
     labels=labels,
     title="Comparison of Curves",
     x_label="Iterations",
     y1_label="F",
-    y2_label="Objetive",
-    y1_colors=['blue', 'green'], 
-    y2_colors=['orange', 'red'] 
+    y2_label="Objective",
+    y1_colors=y1_colors,
+    y2_colors=y2_colors,
 )
 
 plot_logs(
-    x_list=[iterations1, iterations2],
-    y1_list=[fs1, fs2],
-    y2_list=[penalties1, penalties2],
+    x_list=x_list,
+    y1_list=y1_list,
+    y2_list=y3_list,
     labels=labels,
     title="Comparison of Curves",
     x_label="Iterations",
     y1_label="F",
     y2_label="Penalty",
-    y1_colors=['blue', 'green'], 
-    y2_colors=['orange', 'red'] 
+    y1_colors=y1_colors,
+    y2_colors=y2_colors,
 )
+# iterations1, penalties1, objectives1, fs1 = read_log(filenames[0])
+# start = 0
+# end = 120
+# iterations1 = iterations1[start:end]
+# penalties1 = penalties1[start:end]
+# objectives1 = objectives1[start:end]
+# fs1 = fs1[start:end]
+
+# # Cargar datos del segundo archivo
+# iterations2, penalties2, objectives2, fs2 = read_log(filenames[1])
+# iterations2 = iterations2[start:end]
+# penalties2 = penalties2[start:end]
+# objectives2 = objectives2[start:end]
+# fs2 = fs2[start:end]
+
+# labels = ['HaN_01', 'HaN_02']  
+
+# # Graficar
+# plot_logs(
+#     x_list=[iterations1, iterations2],
+#     y1_list=[objectives1, objectives2],
+#     y2_list=[penalties1, penalties2],
+#     labels=labels,
+#     title="Comparison of Curves",
+#     x_label="Iterations",
+#     y1_label="Objetive",
+#     y2_label="Penalty",
+#     y1_colors=['blue', 'green'], 
+#     y2_colors=['orange', 'red'] 
+# )
+
+# plot_logs(
+#     x_list=[iterations1, iterations2],
+#     y1_list=[fs1, fs2],
+#     y2_list=[objectives1, objectives2],
+#     labels=labels,
+#     title="Comparison of Curves",
+#     x_label="Iterations",
+#     y1_label="F",
+#     y2_label="Objetive",
+#     y1_colors=['blue', 'green'], 
+#     y2_colors=['orange', 'red'] 
+# )
+
+# plot_logs(
+#     x_list=[iterations1, iterations2],
+#     y1_list=[fs1, fs2],
+#     y2_list=[penalties1, penalties2],
+#     labels=labels,
+#     title="Comparison of Curves",
+#     x_label="Iterations",
+#     y1_label="F",
+#     y2_label="Penalty",
+#     y1_colors=['blue', 'green'], 
+#     y2_colors=['orange', 'red'] 
+# )
