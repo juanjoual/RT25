@@ -116,8 +116,8 @@ void Optimizer::adam(double *gradient, double *momentum, double *variance, int n
         }
         
         // printf("i[%d], fluence[%d] = %f, gradient[%d] = %f, momentum[%d] = %f, variance[%d]= %f \n", i, i, fluence[i], i, gradient[i], i, momentum[i], i, variance[i]);
-
-        // Methods: 0 = AdaBelief, 1 = Adam, 2 = GD
+ 
+        // Methods: AdaBelief = 0 , Adam = 1, GD = 2
         use_method = 0;
         // Atualizacion del momentum para todos los metodos
         momentum[i] = beta1*momentum[i] + (1-beta1)*gradient[i];
@@ -276,8 +276,8 @@ void Optimizer::optimize(Plan *plan) {
         // if (step > min_step) 
         //    step = step/(1 + decay*t); // Decaimiento inverso
         it++;
-        // if (it == 1300)
-        //    break;
+        if (it == 7000)
+           break;
     }
 
     double elapsed = get_time_s() - start_time;
