@@ -39,7 +39,7 @@ def plot_logs(x_list, y1_list, y2_list, labels, title, x_label, y1_label, y2_lab
 
     ax2 = ax1.twinx()
     for i, (x, y2, color) in enumerate(zip(x_list, y2_list, y2_colors)):
-        ax2.plot(x, y2, color=color, linewidth=2, label=f'{labels[i]} - {y2_label}')
+        ax2.plot(x, y2, color=color, linewidth=2, label=f'{labels[i]} - {y2_label}', linestyle='dashed')
     ax2.set_ylabel(y2_label, color='black')
     ax2.tick_params(axis='y', labelcolor='black')
     ax2.grid(alpha=0.2, axis='y', color='gray')
@@ -47,7 +47,7 @@ def plot_logs(x_list, y1_list, y2_list, labels, title, x_label, y1_label, y2_lab
    
     lines1, labels1 = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
-    ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper right', fontsize=10)
+    # ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper right', fontsize=10)
     
     plt.title(title)
     plt.tight_layout()
@@ -59,16 +59,20 @@ filenames= [
     '../Code_POO/multicore/p_01.log',
     '../Code_POO/multicore/p_02.log',
     '../Code_POO/multicore/p_03.log',
+    '../Code_POO/multicore/p_15.log'
+   
 ]
 
 labels = [
     'HaN_01',
     'HaN_02',
-    'HaN_03'
+    'HaN_03',
+    'HaN_15',
+    
 ]
 
 start = 0
-end = 120
+end = 70
 
 x_list = []
 y1_list = []  # F
