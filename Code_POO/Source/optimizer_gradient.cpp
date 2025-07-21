@@ -191,7 +191,7 @@ void Optimizer_Gradient::optimize(Plan *plan) {
         plan->print_table(k);
     }
 
-    step = 1e3;
+    step = 1e-3;
     decay = 1e-4;
     min_step = 1e-1;
     start_time = get_time_s();
