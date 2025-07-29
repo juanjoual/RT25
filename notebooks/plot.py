@@ -60,8 +60,8 @@ filenames= [
     '../Code_POO/multicore/p_02.log',
     '../Code_POO/multicore/p_03.log',
     '../Code_POO/multicore/p_15.log'
-   
 ]
+
 
 labels = [
     'HaN_01',
