@@ -1,0 +1,7 @@
+### configuration file for openfortivpn, see man openfortivpn(1) ###
+host = portalvpn.ual.es
+port = 10443
+username = jrm069
+password = estapal2025!
+trusted-cert = a61cf0bc5ce9bd33e1d3ab37c0f0115742f0d9f2513d11bf44e36ae710932901
+

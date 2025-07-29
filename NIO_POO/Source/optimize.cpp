@@ -246,7 +246,7 @@ void Optimize_adam::optimize(Plan plan) {
         plan.stats();
         //break;
 
-        if (it % 50 == 0) {
+        if (it % 100 == 0) {
             current_time = get_time_s();
 
             printf("\n[%.3f] Iteration %d %e\n", current_time - start_time, it, step);
