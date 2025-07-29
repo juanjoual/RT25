@@ -457,11 +457,11 @@ void Plan::stats() {
 
 
 void Plan::print_table(int pid) {
-    printf("%2d    Region               Min       Avg       Max       EUD     v_EUD\n", pid); 
+    printf("%2d    Region                         Min       Avg       Max       EUD     v_EUD\n", pid); 
     for (int i = 0; i < n_regions; i++) {
         Region r = regions[pid*n_regions + i];
         if (true || r.is_optimized) { // Vamos a imprimir todas para probar TROTS
-            printf("%-20s %9.4lf %9.4lf %9.4lf %9.4lf %9.4lf\n", r.name, r.min, r.avg, r.max, r.eud, r.v_eud);
+            printf("%-30s %9.4lf %9.4lf %9.4lf %9.4lf %9.4lf\n", r.name, r.min, r.avg, r.max, r.eud, r.v_eud);
         }
     }
 }
