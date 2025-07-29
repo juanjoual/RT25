@@ -745,9 +745,11 @@ void reduce_gradient(double *voxels, int n_voxels, int n_gradients, int n_plans)
     }
 }
 
-void apply_gradient(double *gradient, double *momentum, int n_beamlets, float step, double *fluence, int n_plans) {
+void apply_gradient(double *gradient, double *variance, double *momentum, int n_beamlets, float step, double *fluence, int n_plans, int t) {
 
-    int beta = 0.9;
+    double beta1 = 0.9;
+    double beta2 = 0.9;
+    double epsilon = 1e-8;
 
     //#pragma omp parallel for
     for (int i = 0; i < n_plans*n_beamlets; i++) {
@@ -756,8 +758,42 @@ void apply_gradient(double *gradient, double *momentum, int n_beamlets, float st
             exit(EXIT_FAILURE);
         }
 
-        momentum[i] = beta*momentum[i] + (1-beta)*gradient[i];
-        fluence[i] += step*momentum[i];
+        momentum[i] = beta1*momentum[i] + (1-beta1)*gradient[i];
+
+        int use_method = 1;
+
+        if (use_method == 0){
+            
+            // Adabelief
+            double diff = gradient[i] - momentum[i];  
+            variance[i] = beta2 * variance[i] + (1 - beta2) * diff * diff;
+            // printf("i[%d], fluence[%d] = %f, gradient[%d] = %f, momentum[%d] = %f, variance[%d]= %f \n", i, i, fluence[i], i, gradient[i], i, momentum[i], i, variance[i]);
+            double m_hat = momentum[i] / (1 - pow(beta1, t));
+            double v_hat = variance[i] / (1 - pow(beta2, t));
+            
+            // Aplicar actualización de AdaBelief
+            fluence[i] += step * m_hat / (sqrt(v_hat) + epsilon);
+
+
+
+        } else if (use_method == 1) {
+            // Adam
+
+            variance[i] = beta2*variance[i] + (1-beta2)*gradient[i]*gradient[i];
+
+            double m_hat = momentum[i]/(1 - pow(beta1, t));
+            double v_hat = variance[i]/(1 - pow(beta2, t));
+        
+            fluence[i] += step * m_hat/(sqrt(v_hat) + epsilon);
+
+        } else if (use_method == 2) {
+            // GD
+            step = 1e3;
+            fluence[i] += step*momentum[i];
+        }
+       
+        
+        // fluence[i] += step*momentum[i];
 
         if (fluence[i] < 0) {
             fluence[i] = 0;
@@ -769,7 +805,7 @@ void apply_gradient(double *gradient, double *momentum, int n_beamlets, float st
     }
 }
 
-int descend(Plan plan, double *voxels, double *gradient, double *momentum, float step) {
+int descend(Plan plan, double *voxels, double *gradient, double *variance, double *momentum, float step, int t) {
     memset(voxels, 0, plan.n_plans*plan.n_voxels*sizeof(*voxels));
     memset(gradient, 0, plan.n_plans*plan.n_beamlets*sizeof(*gradient));
 
@@ -802,7 +838,7 @@ int descend(Plan plan, double *voxels, double *gradient, double *momentum, float
     double elapsed = get_time_s() - start_time;
     //printf("Descend mm: %.4f seconds.\n", elapsed);
     
-    apply_gradient(gradient, momentum, plan.n_beamlets, step, plan.fluence, plan.n_plans);
+    apply_gradient(gradient, variance, momentum, plan.n_beamlets, step, plan.fluence, plan.n_plans, t);
 
     return n_gradients;
 }
@@ -813,6 +849,10 @@ void optimize(Plan plan) {
     // *2 because we need two for PTVs, but we're wasting space on organs.
     double *voxels = (double *) malloc(plan.n_plans*plan.n_voxels*plan.n_regions*2*sizeof(*voxels)); 
     double *gradient = (double *) malloc(plan.n_plans*plan.n_beamlets*sizeof(*gradient));
+    
+    double *variance = (double *) malloc(plan.n_plans*gradients_per_region*plan.n_regions*plan.n_beamlets*sizeof(*variance));
+    memset(variance, 0, plan.n_plans*gradients_per_region*plan.n_regions*plan.n_beamlets*sizeof(*variance));
+
     double *momentum = (double *) malloc(plan.n_plans*gradients_per_region*plan.n_regions*plan.n_beamlets*sizeof(*momentum));
     memset(momentum, 0, plan.n_plans*gradients_per_region*plan.n_regions*plan.n_beamlets*sizeof(*momentum));
 
@@ -832,7 +872,7 @@ void optimize(Plan plan) {
         printf("%2d   obj2: %9.24f\n", k, obj2);
         plan.print_table(k);
     }
-    double step = 1e4;
+    double step = 1e2;
     double decay = 1e-7;
     double min_step = 1e-1;
     double start_time = get_time_s();
@@ -840,7 +880,9 @@ void optimize(Plan plan) {
 
     int it = 0;
     while (running && get_time_s() - start_time < 600000) {
-        descend(plan, voxels, gradient, momentum, step);
+        int t = it+1;
+
+        descend(plan, voxels, gradient, variance, momentum, step, t);
         //plan.smooth_cpu();
         plan.compute_dose();
         plan.stats();
@@ -866,7 +908,7 @@ void optimize(Plan plan) {
         //if (step > min_step) 
         //    step = step/(1 + decay*it);
         it++;
-        if (it == 200000)
+        if (it == 5000)
             break;
     }
 
@@ -923,13 +965,64 @@ int main(int argc, char **argv) {
     plan.regions[11].set_targets(false,    -1,    -1,    -1, 38.00, 38.00,  10,   5); // Brainstem
     plan.regions[12].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // Oral Cavity
     plan.regions[13].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // Larynx
-    plan.regions[14].set_targets( true, 48.00, 48.10, 49.20, 48.30, 48.20, -50,  70); // PTV 0-46Gy
+    plan.regions[14].set_targets(true,  46.00, 46.00, 48.00, 47.00, 47.00, -50, 100); // PTV 0-46Gy
     plan.regions[15].set_targets(false,    -1,    -1,    -1, 36.80, 36.80,  10,   5); // PTV Shell 15mm
     plan.regions[16].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5); // PTV Shell 30mm
     plan.regions[17].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5); // PTV Shell 40mm
     plan.regions[18].set_targets(false,    -1,    -1,    -1, 43.70, 43.70,  10,   5); // PTV Shell 5mm
     plan.regions[19].set_targets(false,    -1,    -1,    -1, 46.00, 46.00,  10,   5); // PTV Shell 0mm
     plan.regions[20].set_targets(false,    -1,    -1,    -1, 41.40, 41.40,  10,   5); // Ext. Ring 20mm
+
+    // size_t len = strlen(plan_path);
+    // char plan_n = plan_path[len - 1];
+    // if (plan_n == '3') {
+    //     for (int k = 0; k < plan.n_plans; k++) {
+    //         plan.regions[ 0].set_targets(true,  46.00, 46.00, 32.00, 50.00, 65.00, -50,   100); // PTV 3 mm
+    //         plan.regions[ 1].set_targets(false,    -1,    -1,    -1,  8.30,  8.30,   10,   5); // Bladder
+    //         plan.regions[ 2].set_targets(false,    -1,    -1,    -1,  6.00,  6.00,   10,   5); // Rectum
+    //         plan.regions[ 3].set_targets(false,    -1,    -1,    -1, 33.00, 33.00,  10,   5); // Urethra
+    //         plan.regions[ 4].set_targets(false,    -1,    -1,    -1,  6.00,  6.00,  10,   5); // Femoral Head (L)
+    //         plan.regions[ 5].set_targets(false,    -1,    -1,    -1,  6.00,  6.00,  10,   5); // Femoral Head (R)
+    //         plan.regions[ 6].set_targets(false,    -1,    -1,    -1,  0.10,  0.10,  10,   5); // Penis/Scrotum
+    //         plan.regions[ 7].set_targets(false,    -1,    -1,    -1,  54.00, 54.00, 10,   5); // PZ
+    //         plan.regions[ 8].set_targets(false,    -1,    -1,    -1,  1.00,  1.00,  10,   5); // From 30 mm to External -20 mm
+    //         plan.regions[ 9].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);  // PTV Ring 20 mm - 30 mm
+    //         plan.regions[ 10].set_targets(false,   -1,    -1,    -1,    -1,    -1,  10,   5);  // External Ring 20 mm
+    //         plan.regions[ 11].set_targets(false,   -1,    -1,    -1,    -1,    -1,  10,   5);  // PTV 7 mm
+    //     }
+    // } else if (plan_n == '4') {
+    //     for (int k = 0; k < plan.n_plans; k++) {
+    //         plan.regions[ 0].set_targets(true,  46.00, 46.00, 32.00, 50.00, 65.00, -50,   100); // PTV 3 mm
+    //         plan.regions[ 1].set_targets(false,    -1,    -1,    -1,  8.30,  8.30,   10,   5); // Bladder
+    //         plan.regions[ 2].set_targets(false,    -1,    -1,    -1,  6.00,  6.00,   10,   5); // Rectum
+    //         plan.regions[ 3].set_targets(false,    -1,    -1,    -1, 33.00, 33.00,  10,   5); // Urethra
+    //         plan.regions[ 4].set_targets(false,    -1,    -1,    -1,  6.00,  6.00,  10,   5); // Femoral Head (L)
+    //         plan.regions[ 5].set_targets(false,    -1,    -1,    -1,  6.00,  6.00,  10,   5); // Femoral Head (R)
+    //         plan.regions[ 6].set_targets(false,    -1,    -1,    -1,  0.10,  0.10,  10,   5); // Penis/Scrotum
+    //         plan.regions[ 7].set_targets(false,    -1,    -1,    -1,  54.00, 54.00, 10,   5); // PZ
+    //         plan.regions[ 8].set_targets(false,    -1,    -1,    -1,  1.00,  1.00,  10,   5); // From 30 mm to External -20 mm
+    //         plan.regions[ 9].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);  // PTV Ring 20 mm - 30 mm
+    //         plan.regions[ 10].set_targets(false,   -1,    -1,    -1,    -1,    -1,  10,   5);  // External Ring 20 mm
+    //         plan.regions[ 11].set_targets(false,   -1,    -1,    -1,    -1,    -1,  10,   5);  // PTV 7 mm
+    //     }
+    // } else if (plan_n == '5') {
+    //     for (int k = 0; k < plan.n_plans; k++) {
+    //         plan.regions[ 0].set_targets(true,  46.00, 46.00, 32.00, 50.00, 65.00, -50,   100); // PTV 3 mm
+    //         plan.regions[ 1].set_targets(false,    -1,    -1,    -1,  8.30,  8.30,   10,   5); // Bladder
+    //         plan.regions[ 2].set_targets(false,    -1,    -1,    -1,  6.00,  6.00,   10,   5); // Rectum
+    //         plan.regions[ 3].set_targets(false,    -1,    -1,    -1, 33.00, 33.00,  10,   5); // Urethra
+    //         plan.regions[ 4].set_targets(false,    -1,    -1,    -1,  6.00,  6.00,  10,   5); // Femoral Head (L)
+    //         plan.regions[ 5].set_targets(false,    -1,    -1,    -1,  6.00,  6.00,  10,   5); // Femoral Head (R)
+    //         plan.regions[ 6].set_targets(false,    -1,    -1,    -1,  0.10,  0.10,  10,   5); // Penis/Scrotum
+    //         plan.regions[ 7].set_targets(false,    -1,    -1,    -1,  54.00, 54.00, 10,   5); // PZ
+    //         plan.regions[ 8].set_targets(false,    -1,    -1,    -1,  1.00,  1.00,  10,   5); // From 30 mm to External -20 mm
+    //         plan.regions[ 9].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);  // PTV Ring 20 mm - 30 mm
+    //         plan.regions[ 10].set_targets(false,   -1,    -1,    -1,    -1,    -1,  10,   5);  // External Ring 20 mm
+    //         plan.regions[ 11].set_targets(false,   -1,    -1,    -1,    -1,    -1,  10,   5);  // PTV 7 mm
+    //     }
+    // }
+
+
 
     optimize(plan);
 
