@@ -5,8 +5,9 @@ set -o xtrace
 
 now=$(date +"%Y%m%d_%H%M%S")
 
-plan=Head-and-Neck_07
-# plan=Prostate_CK_03
+# plan=Head-and-Neck_15
+# plan=Prostate_CK_06
+plan=Liver_01
 plan_folder=~/Repo/RT25/TROTS/data/$plan
 
 # Adam
