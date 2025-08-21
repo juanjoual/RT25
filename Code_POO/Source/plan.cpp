@@ -387,6 +387,7 @@ void Plan::compute_dose() {
     #pragma omp parallel for
     for (int i = 0; i < n_voxels*n_plans; i++) {
         doses[i] *= dose_grid_scaling;
+        if (doses[i] < 0) doses[i] = 2.0;   // Adicionado para dosis negativas
         
     }
 
