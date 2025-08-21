@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
     plan.regions[12].set_targets(false, -1, -1, -1, 17.00, 19.00, 10, 5); // External Ring
     plan.regions[13].set_targets(true, 30, 30.0, 35.0, 0, 0, -2, 2);  // PTV40%
     plan.regions[14].set_targets(true, 30, 60.0, 65.0, 0, 0, -2, 2);  // PTV80%
-    plan.regions[15].set_targets(false, -1, -1, -1, -1, -1, 10, 5); //Ring1
+    plan.regions[15].set_targets(false, -1, -1, -1, -1, -1, 10, 5);   //Ring1
     
 
 
