@@ -8,19 +8,23 @@ def read_log(filename, verbose=False):
     with open(filename, 'r') as f:
         lines = f.readlines()
     iterations = []
+    optimizer = []
     penalties = []
     objectives = []
     fs = []
     
     for i in range(len(lines)):
+        
         if 'Iteration' in lines[i]:
             iterations.append(int(lines[i].split()[2]))
-            penalties.append(float(lines[i+1].split()[2]))
-            objectives.append(float(lines[i+2].split()[2]))
-            fs.append(float(lines[i+3].split()[2]))
+            optimizer.append(lines[i+1].split()[1])
+            penalties.append(float(lines[i+2].split()[2]))
+            objectives.append(float(lines[i+3].split()[2]))
+            fs.append(float(lines[i+4].split()[2]))
+        
             if verbose:
                 print('Iteration {:6d}: Penalty: {:.6f}, Objective: {:.6f}, F = {:.8f}'.format(iterations[-1], penalties[-1], objectives[-1], fs[-1]))
-    return iterations, penalties, objectives, fs
+    return iterations, optimizer, penalties, objectives, fs
 
 def plot_logs(x_list, y1_list, y2_list, labels, title, x_label, y1_label, y2_label, y1_colors=None, y2_colors=None):
     fig, ax1 = plt.subplots(figsize=(10, 6))
@@ -47,46 +51,84 @@ def plot_logs(x_list, y1_list, y2_list, labels, title, x_label, y1_label, y2_lab
    
     lines1, labels1 = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
-    # ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper right', fontsize=10)
+    ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper right', fontsize=10)
     
     plt.title(title)
     plt.tight_layout()
     plt.show()
 
 # Cargar datos del primer archivo
+    # Prostate
+# filenames= [
+#     '../Code_POO/multicore/c01.log',
+#     '../Code_POO/multicore/c02.log',
+#     '../Code_POO/multicore/c06.log',
+#     '../Code_POO/multicore/c10.log'
+# ]
+
+
+# labels = [
+#     'Prostate_01',
+#     'Prostate_02',
+#     'Prostate_03',
+#     'Prostate_04'
+
+
+# Head and Neck
+# filenames= [
+#     '../Code_POO/multicore/h01.log',
+#     '../Code_POO/multicore/h02.log',
+#     '../Code_POO/multicore/h03.log',
+#     '../Code_POO/multicore/h15.log',
+
+# ]
+
+
+# labels = [
+#     'HaN_01',
+#     'HaN_02',
+#     'HaN_03',
+#     'HaN_04'
+# ]
+
+#Liver
 
 filenames= [
-    '../Code_POO/multicore/p_01.log',
-    '../Code_POO/multicore/p_02.log',
-    '../Code_POO/multicore/p_03.log',
-    '../Code_POO/multicore/p_15.log'
+    '../Code_POO/multicore/l01.log',
+    # '../Code_POO/multicore/c02.log',
+    # '../Code_POO/multicore/c06.log',
+    # '../Code_POO/multicore/c10.log'
 ]
 
 
 labels = [
-    'HaN_01',
-    'HaN_02',
-    'HaN_03',
-    'HaN_15',
-    
+    'Liver_01',
+    # 'Prostate_02',
+    # 'Prostate_03',
+    # 'Prostate_04'
 ]
 
+
 start = 0
-end = 70
+end = 50
 
 x_list = []
 y1_list = []  # F
 y2_list = []  # Objective
 y3_list = []  # Penalty
+y4_list = []  # Optimizer
 
 for f in filenames:
     print(f'Processing file: {f}')
-    iterations, penalties, objectives, fs = read_log(f)
-    
+    iterations, optimizer, penalties, objectives, fs = read_log(f)
+
     x_list.append(iterations[start:end])
     y1_list.append(fs[start:end])
     y2_list.append(objectives[start:end])
     y3_list.append(penalties[start:end])
+    y4_list.append(optimizer[start:end])
+
+
 
 num_patients = len(filenames)
 

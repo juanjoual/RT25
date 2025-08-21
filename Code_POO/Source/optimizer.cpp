@@ -122,15 +122,15 @@ void Optimizer::adam(double *gradient, double *momentum, double *variance, int n
         // Atualizacion del momentum para todos los metodos
         momentum[i] = beta1*momentum[i] + (1-beta1)*gradient[i];
         
+        
         if (use_method == 0) {
             // AdaBelief
-
             double diff = gradient[i] - momentum[i];  
             variance[i] = beta2 * variance[i] + (1 - beta2) * diff * diff;
 
             double m_hat = momentum[i] / (1 - pow(beta1, t));
             double v_hat = variance[i] / (1 - pow(beta2, t));
-
+            
             // Aplicar actualización de AdaBelief
             fluence[i] += step * m_hat / (sqrt(v_hat) + epsilon);
 
@@ -222,10 +222,15 @@ void Optimizer::optimize(Plan *plan) {
         double pen = penalty(plan, k);
         double obj = plan->regions[poff + rid_sll].avg + plan->regions[poff + rid_slr].avg;
         double obj2 = objective(plan, k);
-        printf("%2d penalty: %9.6f\n", k, pen);
-        printf("%2d    obj: %9.6f\n", k, obj); 
-        printf("%2d   f: %9.24f\n", k, obj2);
-        plan->print_table(k);
+        if (use_method == 0){
+            printf("AdaBelief\n");
+            printf("%2d penalty: %9.6f\n", k, pen);
+            printf("%2d    obj: %9.6f\n", k, obj); 
+            printf("%2d   F: %9.24f\n", k, obj2);
+            plan->print_table(k);
+
+        }
+      
     }
 
     step = 1e2;
@@ -265,10 +270,26 @@ void Optimizer::optimize(Plan *plan) {
                 double pen = penalty(plan, k);
                 double obj = plan->regions[poff + rid_sll].avg + plan->regions[poff + rid_slr].avg;
                 double obj2 = objective(plan, k);
-                printf("%2d penalty: %9.6f\n", k, pen);
-                printf("%2d    obj: %9.6f\n", k, obj); 
-                printf("%2d   f: %9.24f\n", k, obj2);
-                plan->print_table(k);
+                if (use_method == 0){
+                    printf(" Optimizer: AdaBelief\n");
+                    printf("%2d penalty: %9.6f\n", k, pen);
+                    printf("%2d    obj: %9.6f\n", k, obj); 
+                    printf("%2d   F: %9.24f\n", k, obj2);
+                    plan->print_table(k);
+                } else if (use_method == 1) {
+                    printf(" Optimizer: Adam\n");
+                    printf("%2d penalty: %9.6f\n", k, pen);
+                    printf("%2d    obj: %9.6f\n", k, obj); 
+                    printf("%2d   F: %9.24f\n", k, obj2);
+                    plan->print_table(k);
+                } else {
+                    printf(" Optimizer: GD\n");
+                    printf("%2d penalty: %9.6f\n", k, pen);
+                    printf("%2d    obj: %9.6f\n", k, obj); 
+                    printf("%2d   F: %9.24f\n", k, obj2);
+                    plan->print_table(k);
+                }
+               
 
 
             }
@@ -276,7 +297,7 @@ void Optimizer::optimize(Plan *plan) {
         // if (step > min_step) 
         //    step = step/(1 + decay*t); // Decaimiento inverso
         it++;
-        if (it == 7000)
+        if (it == 4300)
            break;
     }
 
@@ -290,7 +311,7 @@ void Optimizer::optimize(Plan *plan) {
         double obj2 = objective(plan, k);
         printf("%2d penalty: %9.6f\n", k, pen);
         printf("%2d    obj: %9.6f\n", k, obj); 
-        printf("%2d   f: %9.24f\n", k, obj2);
+        printf("%2d   F: %9.24f\n", k, obj2);
         plan->print_table(k);
      
     }

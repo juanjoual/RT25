@@ -377,7 +377,7 @@ void Plan::print() {
 void Plan::compute_dose() {
     memset(doses, 0, n_plans*n_voxels*sizeof(*doses));
 
-    double alpha = 1., beta = 0.0;
+    double alpha = 1., beta = 0.;
 
     double start_time = get_time_s();
     mkl_sparse_d_mm(SPARSE_OPERATION_NON_TRANSPOSE, alpha, m, descr, SPARSE_LAYOUT_COLUMN_MAJOR, fluence, n_plans, n_beamlets, beta, doses, n_voxels);
