@@ -75,38 +75,37 @@ def plot_logs(x_list, y1_list, y2_list, labels, title, x_label, y1_label, y2_lab
 
 
 # Head and Neck
-# filenames= [
-#     '../Code_POO/multicore/h01.log',
-#     '../Code_POO/multicore/h02.log',
-#     '../Code_POO/multicore/h03.log',
-#     '../Code_POO/multicore/h15.log',
-
-# ]
-
-
-# labels = [
-#     'HaN_01',
-#     'HaN_02',
-#     'HaN_03',
-#     'HaN_04'
-# ]
-
-#Liver
-
 filenames= [
-    '../Code_POO/multicore/l01.log',
-    # '../Code_POO/multicore/c02.log',
-    # '../Code_POO/multicore/c06.log',
-    # '../Code_POO/multicore/c10.log'
+    '../Code_POO/multicore/h01.log',
+    '../Code_POO/multicore/h02.log',
+    '../Code_POO/multicore/h03.log',
+    '../Code_POO/multicore/h15.log'
+
 ]
 
 
 labels = [
-    'Liver_01',
-    # 'Prostate_02',
-    # 'Prostate_03',
-    # 'Prostate_04'
+    'HaN_01',
+    'HaN_02',
+    'HaN_03',
+    'HaN_04'
 ]
+
+#Liver
+
+# filenames= [
+#     '../Code_POO/multicore/l01.log',
+#     '../Code_POO/multicore/l02.log',
+#    '../Code_POO/multicore/l10.log',
+   
+# ]
+
+
+# labels = [
+#     'Liver_01',
+#     'Liver_02',
+#     'Liver_03',
+# ]
 
 
 start = 0

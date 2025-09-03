@@ -117,8 +117,8 @@ void Optimizer::adam(double *gradient, double *momentum, double *variance, int n
         
         // printf("i[%d], fluence[%d] = %f, gradient[%d] = %f, momentum[%d] = %f, variance[%d]= %f \n", i, i, fluence[i], i, gradient[i], i, momentum[i], i, variance[i]);
  
-        // Methods: AdaBelief = 0 , Adam = 1, GD = 2
-        use_method = 0;
+        // Methods: AdaBelief = 0 , Adam = 1, GD = 2, AdamW = 3
+        use_method = 3;
         // Atualizacion del momentum para todos los metodos
         momentum[i] = beta1*momentum[i] + (1-beta1)*gradient[i];
         
@@ -147,7 +147,22 @@ void Optimizer::adam(double *gradient, double *momentum, double *variance, int n
             // GD
             step = 1e3;
             fluence[i] += step*momentum[i];
-        }
+
+        } else if (use_method == 3) {
+            // AdamW
+            variance[i] = beta2 * variance[i] + (1 - beta2) * gradient[i] * gradient[i];
+
+            double m_hat = momentum[i] / (1 - pow(beta1, t));
+            double v_hat = variance[i] / (1 - pow(beta2, t));
+
+            // update con AdamW
+            double update = step * m_hat / (sqrt(v_hat) + epsilon);
+
+            // weight decay desacoplado
+            double lambda = 1e-6;  // puedes ajustar este valor
+            fluence[i] = fluence[i] * (1 - step * lambda) + update;
+
+        } 
 
 
         if (fluence[i] < 0) {
@@ -282,14 +297,19 @@ void Optimizer::optimize(Plan *plan) {
                     printf("%2d    obj: %9.6f\n", k, obj); 
                     printf("%2d   F: %9.24f\n", k, obj2);
                     plan->print_table(k);
-                } else {
+                } else if (use_method == 2) {
                     printf(" Optimizer: GD\n");
                     printf("%2d penalty: %9.6f\n", k, pen);
                     printf("%2d    obj: %9.6f\n", k, obj); 
                     printf("%2d   F: %9.24f\n", k, obj2);
                     plan->print_table(k);
+                } else if (use_method == 3) {
+                    printf(" Optimizer: AdamW\n");
+                    printf("%2d penalty: %9.6f\n", k, pen);
+                    printf("%2d    obj: %9.6f\n", k, obj); 
+                    printf("%2d   F: %9.24f\n", k, obj2);
+                    plan->print_table(k);
                 }
-               
 
 
             }
