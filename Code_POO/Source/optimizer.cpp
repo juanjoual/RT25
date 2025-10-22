@@ -118,7 +118,7 @@ void Optimizer::adam(double *gradient, double *momentum, double *variance, int n
         // printf("i[%d], fluence[%d] = %f, gradient[%d] = %f, momentum[%d] = %f, variance[%d]= %f \n", i, i, fluence[i], i, gradient[i], i, momentum[i], i, variance[i]);
  
         // Methods: AdaBelief = 0 , Adam = 1, GD = 2, AdamW = 3
-        use_method = 3;
+        use_method = 0;
         // Atualizacion del momentum para todos los metodos
         momentum[i] = beta1*momentum[i] + (1-beta1)*gradient[i];
         
