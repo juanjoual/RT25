@@ -7,6 +7,8 @@
 
 #include <cuda_runtime.h>
 #include <cusparse.h>
+#include <thrust/device_ptr.h>
+#include <thrust/sequence.h>
 
 static volatile int running = 1;
 
@@ -146,21 +148,7 @@ struct SparseMatrix {
         n_cols = 0;
     }
 
-    void free_cpu() {
-        free(rows);
-        free(cols);
-        free(vals);
-    }
     
-    void free_gpu() {
-        cudaCheck(cudaFree(d_rows));
-        cudaCheck(cudaFree(d_cols));
-        cudaCheck(cudaFree(d_vals));
-        cudaCheck(cudaFree(d_rows_t));
-        cudaCheck(cudaFree(d_cols_t));
-        cudaCheck(cudaFree(d_vals_t));
-    }
-
     void copy_to_gpu() {
         cudaCheck(cudaMalloc(&d_rows, n_nz*sizeof(int)));
         cudaCheck(cudaMalloc(&d_cols, n_nz*sizeof(int)));
@@ -183,7 +171,13 @@ struct SparseMatrix {
         cusparseCheck(cusparseXcsrsort_bufferSizeExt(handle, n_rows, n_cols, n_nz, d_rows, d_cols, &p_buffer_size));
         cudaCheck(cudaMalloc(&p, n_nz*sizeof(int)));
         cudaCheck(cudaMalloc(&p_buffer, p_buffer_size*sizeof(char)));
-        cusparseCheck(cusparseCreateIdentityPermutation(handle, n_nz, p));
+        // cusparseCheck(cusparseCreateIdentityPermutation(handle, n_nz, p));
+        // Cambio de Indentity Premution
+        {
+            thrust::device_ptr<int> p_dev(p);
+            thrust::sequence(p_dev, p_dev + n_nz, 0);
+        }
+
         cusparseCheck(cusparseXcoosortByRow(handle, n_rows, n_cols, n_nz, d_rows, d_cols, p, p_buffer));
         //cusparseCheck(cusparseDgthr(handle, n_nz, d_vals, sorted_vals, p, CUSPARSE_INDEX_BASE_ZERO));
     
@@ -238,6 +232,22 @@ struct SparseMatrix {
         coo_to_csr();
         transpose_csr();
     }
+
+    void free_cpu() {
+        free(rows);
+        free(cols);
+        free(vals);
+    }
+
+     void free_gpu() {
+        cudaCheck(cudaFree(d_rows));
+        cudaCheck(cudaFree(d_cols));
+        cudaCheck(cudaFree(d_vals));
+        cudaCheck(cudaFree(d_rows_t));
+        cudaCheck(cudaFree(d_cols_t));
+        cudaCheck(cudaFree(d_vals_t));
+    }
+
 };
 
 struct Region {
@@ -455,19 +465,19 @@ __global__ void apply_gradients_OLD(double *gradients, double *momentum, int n_b
     }
 }
 
-//__global__ void apply_gradients(double *gradients, double *momentum, int n_beamlets, int n_gradients, float step, double *fluence) {
+// __global__ void apply_gradients(double *gradients, double *momentum, int n_beamlets, int n_gradients, float step, double *fluence) {
 //    int idx = blockIdx.x*blockDim.x + threadIdx.x;
 //    int beta = 0.9;
-//    
+   
 //    if (idx < n_beamlets) {
 //        double gradient = 0;
 //        for (int i = 0; i < n_gradients; i++) {
 //            momentum[i*n_beamlets + idx] = beta*momentum[i*n_beamlets + idx] + (1-beta)*gradients[i*n_beamlets + idx];
 //            gradient += momentum[i*n_beamlets + idx];
 //        }
-//        
+       
 //        fluence[idx] += step*gradient;
-//
+
 //        if (fluence[idx] < 0) {
 //            fluence[idx] = 0;
 //        }
@@ -475,7 +485,47 @@ __global__ void apply_gradients_OLD(double *gradients, double *momentum, int n_b
 //            fluence[idx] = 0.2;
 //        }
 //    }
-//}
+// }
+
+
+// Aplicación del AdaBelief
+
+__global__ void adabelief(double *gradients, double *momentum, double *variance, int n_beamlets, float step, double *fluence, int n_plans, int t){
+    
+    int idx = blockIdx.x*blockDim.x + threadIdx.x;
+
+    double beta1 = 0.9;
+    double beta2 = 0.9;
+    double epsilon = 1e-8;
+
+    if (idx < n_beamlets) {
+        // Update biased first moment estimate
+        momentum[idx] = beta1 * momentum[idx] + (1 - beta1) * gradients[idx];
+        // printf("Gradient[%d]: %f\n", idx, gradient[idx]);
+        // Compute the difference between gradient and momentum
+        double diff = gradients[idx] - momentum[idx];
+
+        // Update biased second raw moment estimate
+        variance[idx] = beta2 * variance[idx] + (1 - beta2) * (diff * diff);
+        
+        // Compute bias-corrected first moment estimate
+        double m_hat = momentum[idx] / (1 - pow(beta1, t));
+        
+        // Compute bias-corrected second raw moment estimate
+        double v_hat = variance[idx] / (1 - pow(beta2, t));
+        
+        // Update parameters
+        fluence[idx] += step * m_hat / (sqrt(v_hat) + epsilon);
+
+        // Clip fluence values
+        if (fluence[idx] < 0) {
+            fluence[idx] = 0;
+        }
+        if (fluence[idx] > 0.3) {
+            fluence[idx] = 0.3;
+        }
+    }
+}
 
 __global__ void apply_gradients(double *gradients, double *momentum, int n_beamlets, int n_gradients, float step, double *fluence) {
     int idx = blockIdx.x*blockDim.x + threadIdx.x;
@@ -484,7 +534,7 @@ __global__ void apply_gradients(double *gradients, double *momentum, int n_beaml
     if (idx < n_beamlets) {
         momentum[idx] = beta*momentum[idx] + (1-beta)*gradients[idx];
         fluence[idx] += step*momentum[idx];
-
+        
         // Implementación muy shitty
         //double threshold = 0.02;
         //if (idx > 0) {
@@ -863,10 +913,10 @@ struct Plan {
         double alpha = 1.0, beta = 0.0;
         void *p_buffer;
         size_t p_buffer_size = 0;
-	cusparseCheck(cusparseSpMV_bufferSize(spm.handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, spm.sp_descr, fluence_descr, &beta,
+	    cusparseCheck(cusparseSpMV_bufferSize(spm.handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, spm.sp_descr, fluence_descr, &beta,
 		doses_descr, CUDA_R_64F, CUSPARSE_SPMV_ALG_DEFAULT, &p_buffer_size));
         cudaCheck(cudaMalloc(&p_buffer, p_buffer_size*sizeof(char)));
-	cusparseCheck(cusparseSpMV(spm.handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, spm.sp_descr, fluence_descr, &beta,
+	    cusparseCheck(cusparseSpMV(spm.handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, spm.sp_descr, fluence_descr, &beta,
 		doses_descr, CUDA_R_64F, CUSPARSE_SPMV_ALG_DEFAULT, p_buffer));
 
         int block = 512;
@@ -1162,7 +1212,7 @@ void vector_stats(const char *name, double *vector, int n_values) {
     printf("%s: %f %f %f\n", name, min, max, avg);
 }
 
-int descend(Plan plan, double *d_momentum, float step, int rid_sll, int rid_slr) {
+int descend(Plan plan, double *d_momentum, double *d_variance, double step, int rid_sll, int rid_slr, int t) {
     int block = 512;
     int grid = (plan.n_voxels + block - 1)/block;
 
@@ -1240,7 +1290,8 @@ int descend(Plan plan, double *d_momentum, float step, int rid_sll, int rid_slr)
     //}
 
     grid = (plan.n_beamlets + block - 1)/block;
-    apply_gradients<<<grid, block>>>(d_gradients, d_momentum, plan.n_beamlets, n_gradients, step, plan.d_fluence);
+    // apply_gradients<<<grid, block>>>(d_gradients, d_momentum, plan.n_beamlets, n_gradients, step, plan.d_fluence);
+    adabelief<<<grid, block>>>(d_gradients, d_momentum, d_variance, plan.n_beamlets, step, plan.d_fluence, plan.n_regions, t);
 
     cudaCheck(cudaFree(d_gradients));
     cudaCheck(cudaFree(d_voxels));
@@ -1258,6 +1309,10 @@ void optimize_gpu(Plan plan, int rid_sll, int rid_slr, float gurobi_avg_sll, flo
     cudaCheck(cudaMalloc(&d_momentum, gradients_per_region*plan.n_regions*plan.n_beamlets*sizeof(double)));
     cudaCheck(cudaMemset(d_momentum, 0, gradients_per_region*plan.n_regions*plan.n_beamlets*sizeof(double)));
 
+    double *d_variance;
+    cudaCheck(cudaMalloc(&d_variance, gradients_per_region*plan.n_regions*plan.n_beamlets*sizeof(double)));
+    cudaCheck(cudaMemset(d_variance, 0, gradients_per_region*plan.n_regions*plan.n_beamlets*sizeof(double)));
+
     plan.compute_dose();
     plan.stats();
     cudaCheck(cudaMemcpy(plan.regions, plan.d_regions, plan.n_regions*sizeof(Region), cudaMemcpyDeviceToHost));
@@ -1266,16 +1321,16 @@ void optimize_gpu(Plan plan, int rid_sll, int rid_slr, float gurobi_avg_sll, flo
     //exit(0);
 
     // TODO: Inicializar la fluencia a 0 rompe el algoritmo por los EUD. Hay que revisarlo o inicializar a 0.1 o algo.
-    //cudaCheck(cudaMemset(plan.d_fluence, 0, plan.n_beamlets*sizeof(double)));
-    //plan.compute_dose();
-    //plan.stats();
-    //cudaCheck(cudaMemcpy(plan.regions, plan.d_regions, plan.n_regions*sizeof(Region), cudaMemcpyDeviceToHost));
-    //plan.print_table();
+    // cudaCheck(cudaMemset(plan.d_fluence, 0, plan.n_beamlets*sizeof(double)));
+    // plan.compute_dose();
+    // plan.stats();
+    // cudaCheck(cudaMemcpy(plan.regions, plan.d_regions, plan.n_regions*sizeof(Region), cudaMemcpyDeviceToHost));
+    // plan.print_table();
 
     //float step = 2e-9;
     //float decay = 1e-7;
     //float min_step = 1e-9;
-    float step = 2e-7;
+    float step = 1e2;
     float decay = 1e-7;
     float min_step = 1e-1;
     double start_time = get_time_s();
@@ -1286,7 +1341,8 @@ void optimize_gpu(Plan plan, int rid_sll, int rid_slr, float gurobi_avg_sll, flo
 
     int it = 0;
     while (running && get_time_s() - start_time < 30) {
-        descend(plan, d_momentum, step, rid_sll, rid_slr);
+        int t = it + 1;
+        descend(plan, d_momentum, d_variance, step, rid_sll, rid_slr, t);
 
         cudaCheck(cudaMemcpy(plan.fluence, plan.d_fluence, plan.n_beamlets*sizeof(double), cudaMemcpyDeviceToHost));
         plan.smooth_cpu();
@@ -1306,6 +1362,7 @@ void optimize_gpu(Plan plan, int rid_sll, int rid_slr, float gurobi_avg_sll, flo
             printf("\n[%.3f] Iteration %d %e\n", current_time - start_time, it, step);
             //printf("penalty: %9.6f (%9.6f percent)\n", pen, ((pen-last_pen)*100/last_pen));
             //printf("    obj: %9.6f (%9.6f percent)\n", obj, ((obj-last_obj)*100/last_obj));
+            printf(" Optimizer: AdaBelief\n");
             printf("penalty: %9.6f (%9.6f)\n", pen, pen-last_pen);
             printf("    obj: %9.6f (%9.6f)\n", obj, obj-last_obj); 
             printf("   obj2: %9.24f %9.24f %9.24f\n", obj2, obj2-last_obj2, (obj2-last_obj2)/obj2);
@@ -1333,10 +1390,10 @@ void optimize_gpu(Plan plan, int rid_sll, int rid_slr, float gurobi_avg_sll, flo
         //if (it % 100000 == 0) {
         //    step /= 10;
         //}
-        if (step > min_step) 
-            step = step/(1 + decay*it);
+        // if (step > min_step) 
+        //     step = step/(1 + decay*it);
         it++;
-        if (it == 10000) 
+        if (it == 100) 
             break;
     }
     cudaCheck(cudaMemcpy(plan.regions, plan.d_regions, plan.n_regions*sizeof(Region), cudaMemcpyDeviceToHost));
@@ -1375,59 +1432,86 @@ int main(int argc, char **argv) {
     int rid_sll, rid_slr;
     float gurobi_avg_sll, gurobi_avg_slr;
 
-    if (plan_n == 3) {
-        rid_sll = 5;
-        rid_slr = 6;
-        plan.regions[ 0].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
-        plan.regions[ 1].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
-        plan.regions[ 2].set_targets(false,    -1,    -1,    -1,    60,    60,  10,   5);
-        plan.regions[ 3].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
-        plan.regions[ 4].set_targets(false,    -1,    -1,    -1,    50,    50,  10,   5);
-        plan.regions[ 5].set_targets(false,    -1,    -1,    26,    -1,    26,   1,   5);
-        plan.regions[ 6].set_targets(false,    -1,    -1,    26,    -1,    26,   1,   5);
-        plan.regions[ 7].set_targets(false,    -1,    -1,    -1,    70,    70,  10,   5);
-        plan.regions[ 8].set_targets(false,    -1,    -1,    -1, 74.25, 74.25,  40,   5);
-        plan.regions[ 9].set_targets( true, 60.75, 66.15, 68.85, 74.25, 67.50, -40,  50);
-        plan.regions[10].set_targets( true, 54.00, 58.80, 61.20, 66.00, 60.00, -50, 100);
-        plan.regions[11].set_targets( true, 48.60, 52.92, 55.08, 59.40, 54.00, -40, 100);
-        gurobi_avg_sll = -1;
-        gurobi_avg_slr = -1;
-    } else if (plan_n == 4) {
-        rid_sll = 2;
-        rid_slr = 1;
-        plan.regions[ 0].set_targets(false,    -1,    -1,    -1,    70,    70,  10,   5);
-        plan.regions[ 1].set_targets(false,    -1,    -1,    26,    -1,    26,   1,   5);
-        plan.regions[ 2].set_targets(false,    -1,    -1,    26,    -1,    26,   1,   5);
-        plan.regions[ 3].set_targets(false,    -1,    -1,    -1,    50,    50,  10,   5);
-        plan.regions[ 4].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
-        plan.regions[ 5].set_targets( true, 59.40, 64.67, 67.32, 72.60, 66.00, -50,  50);
-        plan.regions[ 6].set_targets( true, 53.46, 58.21, 60.59, 65.34, 59.40, -50,  50);
-        plan.regions[ 7].set_targets(false,    -1,    -1,    -1,    60,    60,  10,   5);
-        plan.regions[ 8].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
-        plan.regions[ 9].set_targets(false,    -1,    -1,    -1, 74.25, 74.25,  10,   5);
-        plan.regions[10].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
-        gurobi_avg_sll = -1;
-        gurobi_avg_slr = -1;
+    // if (plan_n == 3) {
+    //     rid_sll = 5;
+    //     rid_slr = 6;
+    //     plan.regions[ 0].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
+    //     plan.regions[ 1].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
+    //     plan.regions[ 2].set_targets(false,    -1,    -1,    -1,    60,    60,  10,   5);
+    //     plan.regions[ 3].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
+    //     plan.regions[ 4].set_targets(false,    -1,    -1,    -1,    50,    50,  10,   5);
+    //     plan.regions[ 5].set_targets(false,    -1,    -1,    26,    -1,    26,   1,   5);
+    //     plan.regions[ 6].set_targets(false,    -1,    -1,    26,    -1,    26,   1,   5);
+    //     plan.regions[ 7].set_targets(false,    -1,    -1,    -1,    70,    70,  10,   5);
+    //     plan.regions[ 8].set_targets(false,    -1,    -1,    -1, 74.25, 74.25,  40,   5);
+    //     plan.regions[ 9].set_targets( true, 60.75, 66.15, 68.85, 74.25, 67.50, -40,  50);
+    //     plan.regions[10].set_targets( true, 54.00, 58.80, 61.20, 66.00, 60.00, -50, 100);
+    //     plan.regions[11].set_targets( true, 48.60, 52.92, 55.08, 59.40, 54.00, -40, 100);
+    //     gurobi_avg_sll = -1;
+    //     gurobi_avg_slr = -1;
+    // } else if (plan_n == 4) {
+    //     rid_sll = 2;
+    //     rid_slr = 1;
+    //     plan.regions[ 0].set_targets(false,    -1,    -1,    -1,    70,    70,  10,   5);
+    //     plan.regions[ 1].set_targets(false,    -1,    -1,    26,    -1,    26,   1,   5);
+    //     plan.regions[ 2].set_targets(false,    -1,    -1,    26,    -1,    26,   1,   5);
+    //     plan.regions[ 3].set_targets(false,    -1,    -1,    -1,    50,    50,  10,   5);
+    //     plan.regions[ 4].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
+    //     plan.regions[ 5].set_targets( true, 59.40, 64.67, 67.32, 72.60, 66.00, -50,  50);
+    //     plan.regions[ 6].set_targets( true, 53.46, 58.21, 60.59, 65.34, 59.40, -50,  50);
+    //     plan.regions[ 7].set_targets(false,    -1,    -1,    -1,    60,    60,  10,   5);
+    //     plan.regions[ 8].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
+    //     plan.regions[ 9].set_targets(false,    -1,    -1,    -1, 74.25, 74.25,  10,   5);
+    //     plan.regions[10].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
+    //     gurobi_avg_sll = -1;
+    //     gurobi_avg_slr = -1;
 
-    } else if (plan_n == 5) {
-        rid_sll = 3;
-        rid_slr = 4;
-        plan.regions[ 0].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
-        plan.regions[ 1].set_targets(false,    -1,    -1,    -1, 74.25, 74.25,  10,  5);
-        plan.regions[ 2].set_targets(false,    -1,    -1,    -1,    70,    70,  10,   5);
-        plan.regions[ 3].set_targets(false,    -1,    -1,    26,    -1,    26,   1,   5);
-        plan.regions[ 4].set_targets(false,    -1,    -1,    26,    -1,    26,   1,   5);
-        plan.regions[ 5].set_targets(false,    -1,    -1,    -1,    50,    50,  10,   5);
-        plan.regions[ 6].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
-        plan.regions[ 7].set_targets(false,    -1,    -1,    -1,    60,    60,  10,   5);
-        plan.regions[ 8].set_targets( true, 48.60, 52.92, 55.08, 59.40, 54.00, -50,   50);
-        plan.regions[ 9].set_targets( true, 54.00, 58.80, 61.20, 66.00, 60.00, -50,   50);
-        plan.regions[10].set_targets( true, 59.40, 64.67, 67.32, 72.60, 66.00, -50,   50);
-        plan.regions[11].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
-        gurobi_avg_sll = -1;
-        gurobi_avg_slr = -1;
-    }
-        
+    // } else if (plan_n == 5) {
+    //     rid_sll = 3;
+    //     rid_slr = 4;
+    //     plan.regions[ 0].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
+    //     plan.regions[ 1].set_targets(false,    -1,    -1,    -1, 74.25, 74.25,  10,  5);
+    //     plan.regions[ 2].set_targets(false,    -1,    -1,    -1,    70,    70,  10,   5);
+    //     plan.regions[ 3].set_targets(false,    -1,    -1,    26,    -1,    26,   1,   5);
+    //     plan.regions[ 4].set_targets(false,    -1,    -1,    26,    -1,    26,   1,   5);
+    //     plan.regions[ 5].set_targets(false,    -1,    -1,    -1,    50,    50,  10,   5);
+    //     plan.regions[ 6].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
+    //     plan.regions[ 7].set_targets(false,    -1,    -1,    -1,    60,    60,  10,   5);
+    //     plan.regions[ 8].set_targets( true, 48.60, 52.92, 55.08, 59.40, 54.00, -50,   50);
+    //     plan.regions[ 9].set_targets( true, 54.00, 58.80, 61.20, 66.00, 60.00, -50,   50);
+    //     plan.regions[10].set_targets( true, 59.40, 64.67, 67.32, 72.60, 66.00, -50,   50);
+    //     plan.regions[11].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5);
+    //     gurobi_avg_sll = -1;
+    //     gurobi_avg_slr = -1;
+    // }
+
+
+    // // Head-and-Neck
+    rid_sll = 5;
+    rid_slr = 6;
+    plan.regions[ 0].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // Patient
+    plan.regions[ 1].set_targets(false,    -1,    -1,    -1, 38.00, 38.00,  10,   5); // Spinal Cord
+    plan.regions[ 2].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // Parotid (R)
+    plan.regions[ 3].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // Parotid (L)
+    plan.regions[ 4].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // SMG (R)
+    plan.regions[ 5].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // SMG (L)
+    plan.regions[ 6].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // MCS
+    plan.regions[ 7].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // MCM
+    plan.regions[ 8].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // MCI
+    plan.regions[ 9].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // MCP
+    plan.regions[10].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // Oesophagus
+    plan.regions[11].set_targets(false,    -1,    -1,    -1, 38.00, 38.00,  10,   5); // Brainstem
+    plan.regions[12].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // Oral Cavity
+    plan.regions[13].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // Larynx
+    plan.regions[14].set_targets(true,  46.00, 46.00, 48.00, 48.30, 47.00, -10, 10); // PTV 0-46Gy
+    plan.regions[15].set_targets(false,    -1,    -1,    -1, 36.80, 36.80,  10,   5); // PTV Shell 15mm
+    plan.regions[16].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5); // PTV Shell 30mm
+    plan.regions[17].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5); // PTV Shell 40mm
+    plan.regions[18].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5); // PTV Shell 5mm
+    plan.regions[19].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5); // PTV Shell 0mm
+    plan.regions[20].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5); // Ext. Ring 20mm
+    gurobi_avg_sll = -1;
+    gurobi_avg_slr = -1;
 
     optimize_gpu(plan, rid_sll, rid_slr, gurobi_avg_sll, gurobi_avg_slr, stop_ratio);
 
