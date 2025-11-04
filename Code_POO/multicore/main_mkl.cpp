@@ -40,13 +40,15 @@ int main(int argc, char **argv) {
     plan.regions[11].set_targets(false,    -1,    -1,    -1, 38.00, 38.00,  10,   5); // Brainstem
     plan.regions[12].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // Oral Cavity
     plan.regions[13].set_targets(false,    -1,    -1,    -1, 48.30, 48.30,  10,   5); // Larynx
-    plan.regions[14].set_targets(true,  46.00, 46.00, 48.00, 48.30, 47.00, -10, 10); // PTV 0-46Gy
+    plan.regions[14].set_targets(true,  46.00, 46.00, 47.00, 47.30, 47.00, -10, 10); // PTV 0-46Gy
     plan.regions[15].set_targets(false,    -1,    -1,    -1, 36.80, 36.80,  10,   5); // PTV Shell 15mm
     plan.regions[16].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5); // PTV Shell 30mm
     plan.regions[17].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5); // PTV Shell 40mm
     plan.regions[18].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5); // PTV Shell 5mm
     plan.regions[19].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5); // PTV Shell 0mm
     plan.regions[20].set_targets(false,    -1,    -1,    -1,    -1,    -1,  10,   5); // Ext. Ring 20mm
+
+        
 
     // // Prostate CK
     // plan.regions[ 0].set_targets( true, 31.00, 40.00, 50.00, 72.00, 70.00, -2,  2); // PTV 3 mm

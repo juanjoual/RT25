@@ -26,7 +26,7 @@ def read_log(filename, verbose=False):
                 print('Iteration {:6d}: Penalty: {:.6f}, Objective: {:.6f}, F = {:.8f}'.format(iterations[-1], penalties[-1], objectives[-1], fs[-1]))
     return iterations, optimizer, penalties, objectives, fs
 
-def plot_logs(x_list, y1_list, y2_list, labels, title, x_label, y1_label, y2_label, y1_colors=None, y2_colors=None):
+def plot_logs(x_list, y1_list, y2_list, labels, title, x_label, y1_label, y2_label, y1_colors=None, y2_colors=None, legend_filename=None, plot_filename=None):
     fig, ax1 = plt.subplots(figsize=(10, 6))
     ax1.set_xlabel(x_label)
    
@@ -48,14 +48,30 @@ def plot_logs(x_list, y1_list, y2_list, labels, title, x_label, y1_label, y2_lab
     ax2.tick_params(axis='y', labelcolor='black')
     ax2.grid(alpha=0.2, axis='y', color='gray')
     
+    ax1.axvline(x=250, color='black', linewidth=2, linestyle='--') 
    
     lines1, labels1 = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
-    ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper right', fontsize=10)
+    # ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper right', fontsize=10)
+    
+    
     
     plt.title(title)
     plt.tight_layout()
+    
+    if plot_filename:
+        fig.savefig(plot_filename, bbox_inches='tight', dpi=300)
+        
     plt.show()
+    
+    all_lines = lines1 + lines2
+    all_labels = labels1 + labels2
+    if legend_filename:
+        fig_legend = plt.figure(figsize=(10, 1.5))
+        fig_legend.legend(all_lines, all_labels, loc='center', ncol=4, fontsize=10)
+        fig_legend.savefig(legend_filename, bbox_inches='tight')
+        plt.close(fig_legend)
+        
 
 # Cargar datos del primer archivo
     # Prostate
@@ -76,11 +92,14 @@ def plot_logs(x_list, y1_list, y2_list, labels, title, x_label, y1_label, y2_lab
 
 # Head and Neck
 filenames= [
-    '../Code_POO/multicore/h01.log',
-    '../Code_POO/multicore/h02.log',
-    '../Code_POO/multicore/h03.log',
-    '../Code_POO/multicore/h15.log'
-
+    '../Results/Log/Head-and-Neck/01.log',
+    '../Results/Log/Head-and-Neck/02.log',
+    '../Results/Log/Head-and-Neck/03.log',
+    '../Results/Log/Head-and-Neck/09.log',
+    '../Results/Log/Head-and-Neck/11.log',
+    '../Results/Log/Head-and-Neck/13.log',
+    '../Results/Log/Head-and-Neck/14.log',
+    '../Results/Log/Head-and-Neck/15.log'
 ]
 
 
@@ -88,7 +107,11 @@ labels = [
     'HaN_01',
     'HaN_02',
     'HaN_03',
-    'HaN_04'
+    'HaN_04',
+    'HaN_05',
+    'HaN_06',
+    'HaN_07',
+    'HaN_08'
 ]
 
 #Liver
@@ -149,6 +172,8 @@ plot_logs(
     y2_label="Objective",
     y1_colors=y1_colors,
     y2_colors=y2_colors,
+    legend_filename="legend_F_Objective.png",
+    plot_filename="plot_F_Objective.png"
 )
 
 plot_logs(
@@ -162,6 +187,8 @@ plot_logs(
     y2_label="Penalty",
     y1_colors=y1_colors,
     y2_colors=y2_colors,
+    legend_filename="legend_F_Objective.png",
+    plot_filename="plot_F.png"
 )
 # iterations1, penalties1, objectives1, fs1 = read_log(filenames[0])
 # start = 0

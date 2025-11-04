@@ -11,7 +11,7 @@ plan=Head-and-Neck/Head-and-Neck_15
 plan_folder=~/Repo/RT25/TROTS/data/$plan
 
 # Adam
-folder=../../Results/Adam
+folder=../../Results/AdaBelief
 results_folder=$folder/$plan 
 result_path=$results_folder/x_$plan_$now.txt
 mkdir -p $results_folder

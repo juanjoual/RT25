@@ -317,7 +317,7 @@ void Optimizer::optimize(Plan *plan) {
         // if (step > min_step) 
         //    step = step/(1 + decay*t); // Decaimiento inverso
         it++;
-        if (it == 4300)
+        if (it == 1000)
            break;
     }
 
