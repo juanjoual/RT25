@@ -42,6 +42,14 @@ struct Region {
     int penalty;
     int alpha;
 
+    double ltcp;
+    double dF_dLTCP; 
+    double ref_dose;  
+    double alpha_ltcp;
+    double ltcp_sum;
+    double dltcp_sum;
+    double wLTCP;
+
     void set_targets(bool t_ptv, double t_min, double t_avg_min, double t_avg_max, double t_max, double t_eud, int t_alpha, int t_penalty);
 
 };

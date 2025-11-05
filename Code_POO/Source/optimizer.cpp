@@ -91,6 +91,29 @@ void Optimizer::vector_stats(const char *name, double *vector, int n_values) {
     printf("%s: %f %f %f\n", name, min, max, avg);
 }
 
+
+// Implementación de LTCP
+void Optimizer::voxels_ltcp(Plan *plan, int rid, int pid, double *voxels) {
+
+    Region *r = &plan->regions[pid*plan->n_regions + rid];
+    int n_vox = plan->n_voxels;
+    double alpha_ltcp = r->alpha_ltcp;
+    double Dp = r->ref_dose;
+
+    #pragma omp parallel for
+    for (int i = 0; i < n_vox; i++) {
+        double dose = plan->doses[pid*plan->n_voxels + i];
+        
+        if (plan->voxel_regions[rid*plan->n_voxels + i]){
+            double exp_term = exp(alpha_ltcp * (Dp - dose));
+            // d(LTCP)/d(d_i) = - (α / |T|) * exp(α [Dp - d_i])
+            voxels[i] = -r->wLTCP * alpha_ltcp / n_vox * exp_term * dose;
+        } else {
+            voxels[i] = 0.0;
+        }
+    }
+}
+
 void Optimizer::reduce_gradient(double *voxels, int n_voxels, int n_gradients, int n_plans) {
     for (int k = 0; k < n_plans; k++) {
         unsigned int poff = k*n_voxels*n_gradients;
@@ -104,10 +127,10 @@ void Optimizer::reduce_gradient(double *voxels, int n_voxels, int n_gradients, i
     }
 }
 
-void Optimizer::adam(double *gradient, double *momentum, double *variance, int n_beamlets, float step, double *fluence, int n_plans, int t) {
+void Optimizer::optimizer_imp(double *gradient, double *momentum, double *variance, int n_beamlets, float step, double *fluence, int n_plans, int t) {
 
       
-    beta1 = 0.9, beta2 = 0.9, epsilon = 1e-8;
+    beta1 = 0.9, beta2 = 0.999, epsilon = 1e-8;
     //#pragma omp parallel 
     for (int i = 0; i < n_plans*n_beamlets; i++) {
         if (isnan(gradient[i])) {
@@ -132,7 +155,7 @@ void Optimizer::adam(double *gradient, double *momentum, double *variance, int n
             double v_hat = variance[i] / (1 - pow(beta2, t));
             
             // Aplicar actualización de AdaBelief
-            fluence[i] += step * m_hat / (sqrt(v_hat) + epsilon);
+            fluence[i] -= step * m_hat / (sqrt(v_hat) + epsilon);
 
         } else if (use_method == 1) {
             // Adam
@@ -141,7 +164,7 @@ void Optimizer::adam(double *gradient, double *momentum, double *variance, int n
             double m_hat = momentum[i]/(1 - pow(beta1, t));
             double v_hat = variance[i]/(1 - pow(beta2, t));
         
-            fluence[i] += step * m_hat/(sqrt(v_hat) + epsilon);
+            fluence[i] -= step * m_hat/(sqrt(v_hat) + epsilon);
           
         } else if (use_method == 2) {
             // GD
@@ -177,40 +200,104 @@ void Optimizer::adam(double *gradient, double *momentum, double *variance, int n
 
 int Optimizer::descend(Plan *plan, double *voxels, double *gradient, double *momentum, float step) {
 
-    memset(voxels, 0, plan->n_plans*plan->n_voxels*sizeof(*voxels));
-    memset(gradient, 0, plan->n_plans*plan->n_beamlets*sizeof(*gradient));
+    memset(voxels, 0, plan->n_plans * plan->n_voxels * sizeof(*voxels));
+    memset(gradient, 0, plan->n_plans * plan->n_beamlets * sizeof(*gradient));
 
     int n_gradients = 0;
     int offset = 0;
 
     for (int k = 0; k < plan->n_plans; k++) {
         for (int i = 0; i < plan->n_regions; i++) {
+
             Region *region = &plan->regions[i];
-            if (region->is_optimized) {
-                voxels_eud(plan, i, k, &voxels[offset]);
+            if (!region->is_optimized)
+                continue;
+
+            // ======== EUD ========
+            voxels_eud(plan, i, k, &voxels[offset]);
+            offset += plan->n_voxels;
+            n_gradients++;
+
+            // Si es PTV, incluye EUD virtual (control de sobredosis)
+            if (region->is_ptv) {
                 offset += plan->n_voxels;
                 n_gradients++;
-                if (region->is_ptv) {
-                    offset += plan->n_voxels;
-                    n_gradients++;
-                }
             }
+
+            // // ======== LTCP ========
+            voxels_ltcp(plan, i, k, &voxels[offset]);
+            offset += plan->n_voxels;
+            n_gradients++;
         }
     }
 
+    // Promedio por plan
     n_gradients /= plan->n_plans;
+
+    // Combina los gradientes voxel a voxel
     reduce_gradient(voxels, plan->n_voxels, n_gradients, plan->n_plans);
-    
-    double alpha = 1., beta = 0.0;
+
+    // Multiplica matriz transpuesta * gradiente voxel para obtener gradiente en beamlets
+    double alpha = 1.0, beta = 0.0;
     double start_time = get_time_s();
-    //mkl_sparse_d_mv(SPARSE_OPERATION_NON_TRANSPOSE, alpha, plan.m_t, plan.descr, voxels, beta, gradient);
-    mkl_sparse_d_mm(SPARSE_OPERATION_NON_TRANSPOSE, alpha, plan->m_t, plan->descr,SPARSE_LAYOUT_COLUMN_MAJOR, 
-                    voxels, plan->n_plans, plan->n_voxels, beta, gradient, plan->n_beamlets);
+
+    mkl_sparse_d_mm(
+        SPARSE_OPERATION_NON_TRANSPOSE,
+        alpha,
+        plan->m_t,
+        plan->descr,
+        SPARSE_LAYOUT_COLUMN_MAJOR,
+        voxels,
+        plan->n_plans,
+        plan->n_voxels,
+        beta,
+        gradient,
+        plan->n_beamlets
+    );
+
     double elapsed = get_time_s() - start_time;
-    //printf("Descend mm: %.4f seconds.\n", elapsed);
+    // printf("Descend mm: %.4f seconds.\n", elapsed);
 
     return n_gradients;
 }
+
+
+// int Optimizer::descend(Plan *plan, double *voxels, double *gradient, double *momentum, float step) {
+
+//     memset(voxels, 0, plan->n_plans*plan->n_voxels*sizeof(*voxels));
+//     memset(gradient, 0, plan->n_plans*plan->n_beamlets*sizeof(*gradient));
+
+//     int n_gradients = 0;
+//     int offset = 0;
+
+//     for (int k = 0; k < plan->n_plans; k++) {
+//         for (int i = 0; i < plan->n_regions; i++) {
+//             Region *region = &plan->regions[i];
+//             if (region->is_optimized) {
+//                 voxels_eud(plan, i, k, &voxels[offset]);
+//                 offset += plan->n_voxels;
+//                 n_gradients++;
+//                 if (region->is_ptv) {
+//                     offset += plan->n_voxels;
+//                     n_gradients++;
+//                 }
+//             }
+//         }
+//     }
+
+//     n_gradients /= plan->n_plans;
+//     reduce_gradient(voxels, plan->n_voxels, n_gradients, plan->n_plans);
+    
+//     double alpha = 1., beta = 0.0;
+//     double start_time = get_time_s();
+//     //mkl_sparse_d_mv(SPARSE_OPERATION_NON_TRANSPOSE, alpha, plan.m_t, plan.descr, voxels, beta, gradient);
+//     mkl_sparse_d_mm(SPARSE_OPERATION_NON_TRANSPOSE, alpha, plan->m_t, plan->descr,SPARSE_LAYOUT_COLUMN_MAJOR, 
+//                     voxels, plan->n_plans, plan->n_voxels, beta, gradient, plan->n_beamlets);
+//     double elapsed = get_time_s() - start_time;
+//     //printf("Descend mm: %.4f seconds.\n", elapsed);
+
+//     return n_gradients;
+// }
 
 void Optimizer::optimize(Plan *plan) {
 
@@ -248,7 +335,7 @@ void Optimizer::optimize(Plan *plan) {
       
     }
 
-    step = 1e2;
+    step = 1e-1;
     decay = 1e-4;
     min_step = 1e-1;
     start_time = get_time_s();
@@ -258,7 +345,7 @@ void Optimizer::optimize(Plan *plan) {
         int t = it+1;
 
         descend(plan, voxels, gradient, momentum, step);
-        adam(gradient, momentum, variance, plan->n_beamlets, step, plan->fluence, plan->n_plans, t);
+        optimizer_imp(gradient, momentum, variance, plan->n_beamlets, step, plan->fluence, plan->n_plans, t);
 
         //plan.smooth_cpu();
         plan->compute_dose();

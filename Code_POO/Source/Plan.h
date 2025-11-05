@@ -48,6 +48,7 @@ struct Plan {
     void init_fluence(float value);
     void print();
     void compute_dose();
+
     void stats();
     void print_table(int pid);
     void load(const char *plan_path, const char *fluence_path, const char *fluence_prefix);

@@ -396,73 +396,164 @@ void Plan::compute_dose() {
 }
 
 
+// void Plan::stats() {
+//     #pragma omp parallel for collapse(2)
+//     for (int k = 0; k < n_plans; k++) {
+//         for (int i = 0; i < n_regions; i++) {
+//             Region *r = &regions[k*n_regions + i];
+            
+//             r->min = 1e10;
+//             r->max = 0;
+//             r->avg = 0;
+//             r->sum_alpha = 0;
+//             r->v_sum_alpha = 0;
+//             for (int j = 0; j < n_voxels; j++) {
+//                 if (voxel_regions[i*n_voxels + j]) {
+//                     double dose = doses[k*n_voxels + j];
+//                     if (r->min > dose) {
+//                         r->min = dose;
+//                     }
+//                     if (r->max < dose) {
+//                         r->max = dose;
+//                     }
+//                     r->avg += dose;
+
+//                     if (dose > 0) {
+//                         r->sum_alpha += pow((double) dose, 
+//                                             (double) r->alpha);
+//                         if (r->is_ptv) {
+//                             r->v_sum_alpha += pow((double) dose, 
+//                                                     (double) -r->alpha);
+//                         }
+//                     }
+//                 }
+//             }
+//             r->avg /= r->n_voxels;
+//             r->eud = pow(r->sum_alpha/r->n_voxels, 
+//                             1.0/r->alpha);
+//             if (r->is_ptv) {
+//                 r->v_eud = pow(r->v_sum_alpha/r->n_voxels, 
+//                                 1.0/-r->alpha);
+//             }
+//             if (r->is_optimized) {
+//                 int n = r->penalty;
+//                 int pd = r->pr_eud;
+//                 double eud = r->eud;
+//                 int v_pd = pd + 1; // Hardcoded virtual PTV prescribed dose
+//                 double v_eud = r->v_eud;
+//                 if (r->is_ptv) {
+//                     r->f = 1/(1 + pow(pd/eud, n));
+//                     r->dF_dEUD =  (n*r->f/eud) * pow(pd/eud, n);
+//                     // Virtual EUD to control PTV over-dosage
+//                     r->v_f = 1/(1 + pow(v_eud/v_pd, n));
+//                     r->v_dF_dEUD = -(n*r->v_f/v_eud) * pow(v_eud/v_pd, n);
+//                 } else {
+//                     r->f = 1/(1 + pow(eud/pd, n));
+//                     r->dF_dEUD = -(n*r->f/eud) * pow(eud/pd, n);
+//                 }
+//             }
+//         }
+//     }
+// }
+
 void Plan::stats() {
     #pragma omp parallel for collapse(2)
     for (int k = 0; k < n_plans; k++) {
         for (int i = 0; i < n_regions; i++) {
             Region *r = &regions[k*n_regions + i];
             
+            // Inicializa valores
             r->min = 1e10;
             r->max = 0;
             r->avg = 0;
             r->sum_alpha = 0;
             r->v_sum_alpha = 0;
+            double Dp = r->ref_dose;          
+            double alpha_ltcp = r->alpha_ltcp;
+            double ltcp = r->ltcp;
+          
+        
             for (int j = 0; j < n_voxels; j++) {
                 if (voxel_regions[i*n_voxels + j]) {
                     double dose = doses[k*n_voxels + j];
-                    if (r->min > dose) {
-                        r->min = dose;
-                    }
-                    if (r->max < dose) {
-                        r->max = dose;
-                    }
+                    if (r->min > dose) r->min = dose;
+                    if (r->max < dose) r->max = dose;
                     r->avg += dose;
 
                     if (dose > 0) {
-                        r->sum_alpha += pow((double) dose, 
-                                            (double) r->alpha);
+                        r->sum_alpha += pow((double)dose, (double)r->alpha);
                         if (r->is_ptv) {
-                            r->v_sum_alpha += pow((double) dose, 
-                                                    (double) -r->alpha);
+                            r->v_sum_alpha += pow((double)dose, (double)-r->alpha);
                         }
                     }
                 }
+
+              
             }
+
+           
             r->avg /= r->n_voxels;
-            r->eud = pow(r->sum_alpha/r->n_voxels, 
-                            1.0/r->alpha);
+            r->eud = pow(r->sum_alpha / r->n_voxels, 1.0 / r->alpha);
             if (r->is_ptv) {
-                r->v_eud = pow(r->v_sum_alpha/r->n_voxels, 
-                                1.0/-r->alpha);
+                r->v_eud = pow(r->v_sum_alpha / r->n_voxels, 1.0 / -r->alpha);
             }
+
+            // Evaluación del objetivo
             if (r->is_optimized) {
                 int n = r->penalty;
                 int pd = r->pr_eud;
                 double eud = r->eud;
-                int v_pd = pd + 1; // Hardcoded virtual PTV prescribed dose
+                int v_pd = pd + 1; // Dosis prescrita virtual (control sobre-dosis)
                 double v_eud = r->v_eud;
+
+                // ======== EUD ========
                 if (r->is_ptv) {
-                    r->f = 1/(1 + pow(pd/eud, n));
-                    r->dF_dEUD =  (n*r->f/eud) * pow(pd/eud, n);
-                    // Virtual EUD to control PTV over-dosage
-                    r->v_f = 1/(1 + pow(v_eud/v_pd, n));
-                    r->v_dF_dEUD = -(n*r->v_f/v_eud) * pow(v_eud/v_pd, n);
+                    r->f = 1.0 / (1.0 + pow(pd / eud, n));
+                    r->dF_dEUD = (n * r->f / eud) * pow(pd / eud, n);
+                    // Virtual EUD para control de sobredosis
+                    r->v_f = 1.0 / (1.0 + pow(v_eud / v_pd, n));
+                    r->v_dF_dEUD = -(n * r->v_f / v_eud) * pow(v_eud / v_pd, n);
                 } else {
-                    r->f = 1/(1 + pow(eud/pd, n));
-                    r->dF_dEUD = -(n*r->f/eud) * pow(eud/pd, n);
+                    r->f = 1.0 / (1.0 + pow(eud / pd, n));
+                    r->dF_dEUD = -(n * r->f / eud) * pow(eud / pd, n);
                 }
+
+                // ======== LTCP ========
+               
+                for (int j = 0; j < n_voxels; j++) {
+                    if (voxel_regions[i*n_voxels + j]) {
+                        double dose = doses[k*n_voxels + j];
+
+                        double exp_term = exp(alpha_ltcp * (Dp - (double)dose));
+                        r->ltcp_sum = exp_term;
+
+                        // Derivada con respecto a la dosis local d_i:
+                        r->dltcp_sum += -alpha_ltcp * exp_term  * (double) dose;
+                        
+                    }
+                }
+
+                if (n_voxels > 0) {
+                    r->ltcp =  r->ltcp_sum/ n_voxels;
+                    r->dF_dLTCP = r->dltcp_sum / n_voxels;
+                    } else {
+                        r->ltcp = 0.0;
+                        r->dF_dLTCP = 0.0;
+                }
+
             }
         }
+        
     }
 }
 
 
 void Plan::print_table(int pid) {
-    printf("%2d    Region                         Min       Avg       Max       EUD     v_EUD\n", pid); 
+    printf("%2d    Region                         Min       Avg       Max       EUD     v_EUD          LTCP\n", pid); 
     for (int i = 0; i < n_regions; i++) {
         Region r = regions[pid*n_regions + i];
         if (true || r.is_optimized) { // Vamos a imprimir todas para probar TROTS
-            printf("%-30s %9.4lf %9.4lf %9.4lf %9.4lf %9.4lf\n", r.name, r.min, r.avg, r.max, r.eud, r.v_eud);
+            printf("%-30s %9.4lf %9.4lf %9.4lf %9.4lf %9.4lf %9.4lf\n", r.name, r.min, r.avg, r.max, r.eud, r.v_eud, r.ltcp);
         }
     }
 }

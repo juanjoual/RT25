@@ -23,6 +23,7 @@ struct Optimizer_Gradient {
     double *objective_values;
     double current_time;
 
+   
     void voxels_eud(Plan *plan, int rid, int pid, double *voxels);
     double penalty(Plan *plan, unsigned int pid);
     double objective(Plan *plan, unsigned int pid);

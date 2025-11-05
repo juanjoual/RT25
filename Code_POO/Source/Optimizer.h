@@ -30,12 +30,15 @@ struct Optimizer {
     double current_time;
     double *objective_values;
     
+   
+
     void voxels_eud(Plan *plan, int rid, int pid, double *voxels);
+    void voxels_ltcp(Plan *plan, int rid, int pid, double *voxels);
     double penalty(Plan *plan, unsigned int pid);
     double objective(Plan *plan, unsigned int pid);
     void vector_stats(const char *name, double *vector, int n_values);
     void reduce_gradient(double *voxels, int n_voxels, int n_gradients, int n_plans);
-    void adam(double *gradient, double *momentum, double *variance, int n_beamlets, float step, double *fluence, int n_plans, int t); 
+    void optimizer_imp(double *gradient, double *momentum, double *variance, int n_beamlets, float step, double *fluence, int n_plans, int t); 
     int descend(Plan *plan, double *voxels, double *gradient, double *momentum, float step);
     void optimize(Plan *plan);
 

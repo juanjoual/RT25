@@ -23,5 +23,17 @@ void Region::set_targets(bool t_ptv, double t_min, double t_avg_min, double t_av
         v_dF_dEUD = 0;
         sum_alpha = 0;
         v_sum_alpha = 0;
+
+         // ======== Inicialización LTCP ========
+        ltcp = 0.0;
+        dF_dLTCP = 0.0;
+        ref_dose = 46.0;      
+        alpha_ltcp = 0.82;           
+        ltcp_sum = 0.0;
+        dltcp_sum = 0.0;
+        wLTCP = 0.005;
     }
+
 }
+
+    
