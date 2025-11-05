@@ -48,7 +48,7 @@ def plot_logs(x_list, y1_list, y2_list, labels, title, x_label, y1_label, y2_lab
     ax2.tick_params(axis='y', labelcolor='black')
     ax2.grid(alpha=0.2, axis='y', color='gray')
     
-    ax1.axvline(x=250, color='black', linewidth=2, linestyle='--') 
+    ax1.axvline(x=230, color='black', linewidth=2, linestyle='--') 
    
     lines1, labels1 = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
@@ -74,45 +74,47 @@ def plot_logs(x_list, y1_list, y2_list, labels, title, x_label, y1_label, y2_lab
         
 
 # Cargar datos del primer archivo
-    # Prostate
-# filenames= [
-#     '../Code_POO/multicore/c01.log',
-#     '../Code_POO/multicore/c02.log',
-#     '../Code_POO/multicore/c06.log',
-#     '../Code_POO/multicore/c10.log'
-# ]
+# Prostate
 
-
-# labels = [
-#     'Prostate_01',
-#     'Prostate_02',
-#     'Prostate_03',
-#     'Prostate_04'
-
-
-# Head and Neck
 filenames= [
-    '../Results/Log/Head-and-Neck/01.log',
-    '../Results/Log/Head-and-Neck/02.log',
-    '../Results/Log/Head-and-Neck/03.log',
-    '../Results/Log/Head-and-Neck/09.log',
-    '../Results/Log/Head-and-Neck/11.log',
-    '../Results/Log/Head-and-Neck/13.log',
-    '../Results/Log/Head-and-Neck/14.log',
-    '../Results/Log/Head-and-Neck/15.log'
+    '../Results/Log/Prostate/01.log',
+    '../Results/Log/Prostate/02.log',
+    '../Results/Log/Prostate/04.log',
+    '../Results/Log/Prostate/05.log',
 ]
 
 
 labels = [
-    'HaN_01',
-    'HaN_02',
-    'HaN_03',
-    'HaN_04',
-    'HaN_05',
-    'HaN_06',
-    'HaN_07',
-    'HaN_08'
+    'Prostate_01',
+    'Prostate_02',
+    'Prostate_03',
+    'Prostate_04'
+
 ]
+
+# # Head and Neck
+# filenames= [
+#     '../Results/Log/Head-and-Neck/01.log',
+#     '../Results/Log/Head-and-Neck/02.log',
+#     '../Results/Log/Head-and-Neck/03.log',
+#     '../Results/Log/Head-and-Neck/09.log',
+#     '../Results/Log/Head-and-Neck/11.log',
+#     '../Results/Log/Head-and-Neck/13.log',
+#     '../Results/Log/Head-and-Neck/14.log',
+#     '../Results/Log/Head-and-Neck/15.log'
+# ]
+
+
+# labels = [
+#     'HaN_01',
+#     'HaN_02',
+#     'HaN_03',
+#     'HaN_04',
+#     'HaN_05',
+#     'HaN_06',
+#     'HaN_07',
+#     'HaN_08'
+# ]
 
 #Liver
 
@@ -132,7 +134,7 @@ labels = [
 
 
 start = 0
-end = 50
+end = 8
 
 x_list = []
 y1_list = []  # F
